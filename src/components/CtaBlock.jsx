@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 
-export default function CtaBlock() {
+export default function CtaBlock({ cms = {} }) {
   const scrollToContact = () => {
     const el = document.getElementById('contact');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -16,15 +16,15 @@ export default function CtaBlock() {
 
       <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
         <span className="cta-eyebrow">Let's Build Together</span>
-        <h2 className="cta-headline">Ready to Build Your Next<br />Digital Product?</h2>
+        <h2 className="cta-headline">{cms.home_cta_title || 'Ready to Build Your Next\nDigital Product?'}</h2>
         <p className="cta-desc">
-          Get in touch with our engineering team today. We'll map your requirements and deliver a detailed prototype cost estimate — completely free.
+          {cms.home_cta_subtitle || 'Get in touch with our engineering team today. We\'ll map your requirements and deliver a detailed prototype cost estimate — completely free.'}
         </p>
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={scrollToContact} className="btn cta-btn-white">
             Start Your Project <ArrowRight size={16} />
           </button>
-          <a href="https://wa.me/2348061657738" target="_blank" rel="noopener noreferrer" className="btn cta-btn-outline">
+          <a href={cms.whatsapp_link || 'https://wa.me/2348061657738'} target="_blank" rel="noopener noreferrer" className="btn cta-btn-outline">
             Chat on WhatsApp
           </a>
         </div>

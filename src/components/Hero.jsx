@@ -160,8 +160,7 @@ function ParticleField() {
 }
 
 /* ─── HERO COMPONENT ─── */
-export default function Hero() {
-  const [cms, setCms] = useState({});
+export default function Hero({ cms = {} }) {
   const typingPhrases = [
     'Websites & Web Apps',
     'Mobile Applications',
@@ -176,13 +175,6 @@ export default function Hero() {
   const stat1 = useCountUp(20, 2000);
   const stat2 = useCountUp(180, 2200);
   const stat3 = useCountUp(8, 1800);
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/cms.php`)
-      .then(res => res.json())
-      .then(data => setCms(data || {}))
-      .catch(err => console.error('Failed to load CMS settings', err));
-  }, []);
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -227,10 +219,10 @@ export default function Hero() {
             {/* CTAs */}
             <div className="hero-btns-wrapper">
               <button onClick={() => scrollToSection('projects')} className="btn btn-primary hero-cta-primary">
-                View Our Work <ArrowRight size={16} />
+                {cms.home_hero_cta_primary || 'View Our Work'} <ArrowRight size={16} />
               </button>
               <button onClick={() => scrollToSection('contact')} className="btn btn-outline hero-cta-secondary">
-                Get a Free Quote
+                {cms.home_hero_cta_secondary || 'Get a Free Quote'}
               </button>
             </div>
 
@@ -241,7 +233,7 @@ export default function Hero() {
                 <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80" alt="Client" />
                 <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&q=80" alt="Client" />
               </div>
-              <span>Trusted by <strong>20+ clients</strong> & engineering teams</span>
+              <span>{cms.home_trusted_by_title || <>Trusted by <strong>20+ clients</strong> & engineering teams</>}</span>
             </div>
           </div>
 

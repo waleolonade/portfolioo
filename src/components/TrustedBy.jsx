@@ -21,14 +21,14 @@ const partners = [
   'PayBridge Systems'
 ];
 
-export default function TrustedBy() {
+export default function TrustedBy({ cms = {} }) {
   return (
     <section className="trusted-by-section">
       <div className="container">
         {/* Marquee Partners Row */}
         <div className="trusted-header">
           <div className="trusted-divider" />
-          <span className="trusted-label">Trusted by 20+ clients & engineering teams</span>
+          <span className="trusted-label">{cms.home_trusted_by_title || 'Trusted by 20+ clients & engineering teams'}</span>
           <div className="trusted-divider" />
         </div>
 
@@ -42,7 +42,7 @@ export default function TrustedBy() {
 
         {/* Certified Stack Badges */}
         <div className="certified-stack">
-          <span className="certified-label">Certified Stacks</span>
+          <span className="certified-label">{cms.home_trusted_by_subtitle || 'Certified Stacks'}</span>
           <div className="certified-badges">
             {techs.map((tech, idx) => (
               <span key={idx} className="certified-badge" style={{ '--badge-color': tech.color }}>

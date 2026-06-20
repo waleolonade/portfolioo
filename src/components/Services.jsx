@@ -39,7 +39,7 @@ const fallbackServices = [
   { id: 'f8', icon_name: 'HeartHandshake', name: "Maintenance & Support", description: "Technical support, security updates, routine system maintenance, 24/7 coverage." }
 ];
 
-export default function Services() {
+export default function Services({ cms = {} }) {
   const [services, setServices] = useState(fallbackServices);
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
@@ -68,10 +68,10 @@ export default function Services() {
             letterSpacing: '0.15em',
             display: 'block',
             marginBottom: '12px'
-          }}>What We Do</span>
-          <h2 className="section-title" style={{ marginBottom: '16px' }}>Our Core Services</h2>
+          }}>{cms.home_services_subtitle || 'What We Do'}</span>
+          <h2 className="section-title" style={{ marginBottom: '16px' }}>{cms.home_services_title || 'Our Core Services'}</h2>
           <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            Comprehensive digital solutions designed to help businesses grow, scale, and operate efficiently.
+            {cms.home_services_description || 'Comprehensive digital solutions designed to help businesses grow, scale, and operate efficiently.'}
           </p>
         </div>
         

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileCode2, Layers, Palette, ShieldCheck, Cpu, Globe } from 'lucide-react';
 
-export default function QuickIntro() {
+export default function QuickIntro({ cms = {} }) {
   const strengths = [
     {
       icon: <FileCode2 size={22} />,
@@ -45,10 +45,10 @@ export default function QuickIntro() {
     <section className="section" style={{ backgroundColor: 'var(--bg-primary)', borderTop: '1px solid var(--border)', padding: '80px 0' }}>
       <div className="container">
         <div className="qi-header">
-          <span className="qi-eyebrow">Who We Are</span>
-          <h2 className="qi-title">Transforming Ideas Into Scalable Digital Products</h2>
+          <span className="qi-eyebrow">{cms.home_intro_title || 'Who We Are'}</span>
+          <h2 className="qi-title">{cms.home_intro_subtitle || 'Transforming Ideas Into Scalable Digital Products'}</h2>
           <p className="qi-subtitle">
-            Brainfeels Tech is a multi-disciplinary software engineering agency. We design, deploy, and maintain high-performance digital products for businesses globally. By leveraging modern frameworks and strict cloud orchestration, we guarantee rapid delivery and seamless operational scaling.
+            {cms.home_intro_description || 'Brainfeels Tech is a multi-disciplinary software engineering agency. We design, deploy, and maintain high-performance digital products for businesses globally. By leveraging modern frameworks and strict cloud orchestration, we guarantee rapid delivery and seamless operational scaling.'}
           </p>
         </div>
 

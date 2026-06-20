@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, Layers } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
-export default function Projects() {
+export default function Projects({ cms = {} }) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,9 +37,9 @@ export default function Projects() {
   return (
     <section id="projects" className="section">
       <div className="container">
-        <h2 className="section-title">Featured Engagements</h2>
+        <h2 className="section-title">{cms.home_projects_title || 'Featured Engagements'}</h2>
         <p className="section-subtitle">
-          Explore a selection of our engineering projects, showing how we solve complex data, deployment, and backend scaling challenges.
+          {cms.home_projects_subtitle || 'Explore a selection of our engineering projects, showing how we solve complex data, deployment, and backend scaling challenges.'}
         </p>
         
         {/* Category Filters */}

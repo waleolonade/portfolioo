@@ -21,7 +21,7 @@ const GithubIcon = ({ size = 24, className = "", style = {} }) => (
   </svg>
 );
 
-export default function GithubShowcase() {
+export default function GithubShowcase({ cms = {} }) {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,10 +49,10 @@ export default function GithubShowcase() {
       <div className="container">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '12px' }}>
           <GithubIcon size={28} className="text-glow" style={{ color: 'var(--primary)' }} />
-          <h2 className="section-title" style={{ margin: 0 }}>Open Source Repositories</h2>
+          <h2 className="section-title" style={{ margin: 0 }}>{cms.home_github_title || 'Open Source Repositories'}</h2>
         </div>
         <p className="section-subtitle" style={{ marginBottom: '40px' }}>
-          Direct integration with GitHub showing our latest active repositories, source code architectures, and developer contributions.
+          {cms.home_github_subtitle || 'Direct integration with GitHub showing our latest active repositories, source code architectures, and developer contributions.'}
         </p>
 
         {loading && (

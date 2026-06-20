@@ -7,6 +7,21 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
+const DEFAULT_LAYOUT = [
+  { id: 'hero', name: 'Hero Banner', visible: true },
+  { id: 'trusted_by', name: 'Trusted By Marquee', visible: true },
+  { id: 'intro', name: 'Who We Are / What We Do', visible: true },
+  { id: 'services', name: 'Our Core Services', visible: true },
+  { id: 'projects', name: 'Featured Engagements', visible: true },
+  { id: 'github', name: 'Open Source Repositories', visible: true },
+  { id: 'tech_stack', name: 'Core Technology Stack', visible: true },
+  { id: 'why_us', name: 'Why Brainfeels Tech', visible: true },
+  { id: 'process', name: 'Our Engineering Process', visible: true },
+  { id: 'testimonials', name: 'Client Testimonials', visible: true },
+  { id: 'cta_block', name: 'Start a Conversation', visible: true },
+  { id: 'contact', name: 'Quick Message & Estimator', visible: true }
+];
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview'); // overview, cms, projects, services, leads, careers, ai
   const [projects, setProjects] = useState([]);
@@ -15,6 +30,8 @@ export default function Dashboard() {
   const [careers, setCareers] = useState([]);
   const [applications, setApplications] = useState([]);
   const [cmsForm, setCmsForm] = useState({});
+  const [layout, setLayout] = useState([]);
+  const [expandedSection, setExpandedSection] = useState(null);
   const [stats, setStats] = useState({ totalProjects: 0, totalServices: 0, totalLeads: 0, totalJobs: 0 });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({ success: null, error: null });
@@ -107,6 +124,20 @@ export default function Dashboard() {
       setProjects(resProjects || []);
       setServices(resServices || []);
       setCmsForm(resCMS || {});
+      if (resCMS && resCMS.homepage_layout) {
+        try {
+          const parsed = JSON.parse(resCMS.homepage_layout);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLayout(parsed);
+          } else {
+            setLayout(DEFAULT_LAYOUT);
+          }
+        } catch (e) {
+          setLayout(DEFAULT_LAYOUT);
+        }
+      } else {
+        setLayout(DEFAULT_LAYOUT);
+      }
       setCareers(resCareers || []);
       
       if (resInquiries.ok) setInquiries(resInquiries.data || []);
@@ -136,6 +167,25 @@ export default function Dashboard() {
   };
 
   // --- CMS Page Builder ---
+  const moveSection = (index, direction) => {
+    const newLayout = [...layout];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newLayout.length) return;
+    
+    // Swap elements
+    const temp = newLayout[index];
+    newLayout[index] = newLayout[targetIndex];
+    newLayout[targetIndex] = temp;
+    
+    setLayout(newLayout);
+  };
+
+  const toggleSectionVisibility = (index) => {
+    const newLayout = [...layout];
+    newLayout[index].visible = !newLayout[index].visible;
+    setLayout(newLayout);
+  };
+
   const handleCmsChange = (e) => {
     const { name, value } = e.target;
     setCmsForm(prev => ({ ...prev, [name]: value }));
@@ -144,9 +194,13 @@ export default function Dashboard() {
   const handleSaveCms = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...cmsForm,
+        homepage_layout: JSON.stringify(layout)
+      };
       const res = await adminFetch(`${API_BASE_URL}/cms.php`, {
         method: 'POST',
-        body: JSON.stringify(cmsForm)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         showFeedback('success', 'CMS settings updated successfully.');
@@ -544,53 +598,356 @@ export default function Dashboard() {
               {activeTab === 'cms' && (
                 <div className="card" style={{ padding: '32px', textAlign: 'left' }}>
                   <form onSubmit={handleSaveCms}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '20px' }}>Homepage Copywriting</h3>
-                    <div className="form-group">
-                      <label className="form-label">Hero Title</label>
-                      <input type="text" name="home_hero_title" value={cmsForm.home_hero_title || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Hero Subtitle</label>
-                      <textarea name="home_hero_subtitle" value={cmsForm.home_hero_subtitle || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '40px', marginBottom: '20px' }}>Company Information</h3>
-                    <div className="form-group">
-                      <label className="form-label">About Story</label>
-                      <textarea name="company_story" value={cmsForm.company_story || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Mission statement</label>
-                      <textarea name="company_mission" value={cmsForm.company_mission || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Vision statement</label>
-                      <textarea name="company_vision" value={cmsForm.company_vision || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '40px', marginBottom: '20px' }}>Contact & Social Connections</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                      <div className="form-group">
-                        <label className="form-label">Email</label>
-                        <input type="email" name="contact_email" value={cmsForm.contact_email || ''} onChange={handleCmsChange} className="form-control" />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>WordPress-Style Site Customizer</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                          Rearrange homepage sections, toggle visibility, and customize titles and text values from A to Z.
+                        </p>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Phone</label>
-                        <input type="text" name="contact_phone" value={cmsForm.contact_phone || ''} onChange={handleCmsChange} className="form-control" />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Address</label>
-                      <input type="text" name="contact_address" value={cmsForm.contact_address || ''} onChange={handleCmsChange} className="form-control" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">WhatsApp Link</label>
-                      <input type="url" name="whatsapp_link" value={cmsForm.whatsapp_link || ''} onChange={handleCmsChange} className="form-control" />
+                      <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>
+                        Publish Layout Changes
+                      </button>
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', marginTop: '20px' }}>
-                      Save Content Changes
-                    </button>
+                    {/* Left & Right customizer layout grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px' }} className="customizer-grid">
+                      
+                      {/* Left: Section Orderer */}
+                      <div>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '16px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Homepage Sections Order & Visibility
+                        </h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
+                          {layout.map((sect, idx) => {
+                            const isExpanded = expandedSection === sect.id;
+                            return (
+                              <div key={sect.id} style={{ 
+                                border: '1px solid var(--border)', 
+                                borderRadius: 'var(--radius-sm)', 
+                                backgroundColor: 'var(--bg-secondary)',
+                                overflow: 'hidden',
+                                transition: 'var(--transition)'
+                              }}>
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between', 
+                                  padding: '16px 20px', 
+                                  backgroundColor: isExpanded ? 'rgba(var(--primary-rgb), 0.03)' : 'transparent',
+                                  borderBottom: isExpanded ? '1px solid var(--border)' : 'none'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    {/* Handle & Order indicators */}
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', width: '20px' }}>
+                                      {idx + 1}
+                                    </span>
+                                    <span style={{ fontWeight: 700, color: sect.visible ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                      {sect.name} {!sect.visible && <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--error)', marginLeft: '6px' }}>(Hidden)</span>}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Ordering and Vis Actions */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => moveSection(idx, -1)} 
+                                      disabled={idx === 0} 
+                                      className="btn btn-outline" 
+                                      style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                    >
+                                      ▲ Up
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => moveSection(idx, 1)} 
+                                      disabled={idx === layout.length - 1} 
+                                      className="btn btn-outline" 
+                                      style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                    >
+                                      ▼ Down
+                                    </button>
+                                    
+                                    <button 
+                                      type="button" 
+                                      onClick={() => toggleSectionVisibility(idx)} 
+                                      className="btn btn-outline" 
+                                      style={{ 
+                                        padding: '6px 12px', 
+                                        fontSize: '0.8rem', 
+                                        backgroundColor: sect.visible ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                        color: sect.visible ? 'var(--success)' : 'var(--error)',
+                                        borderColor: sect.visible ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+                                      }}
+                                    >
+                                      {sect.visible ? 'Visible' : 'Hidden'}
+                                    </button>
+
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setExpandedSection(isExpanded ? null : sect.id)} 
+                                      className="btn btn-primary" 
+                                      style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                                    >
+                                      {isExpanded ? 'Collapse' : 'Customize'}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Customizer inputs sub-form */}
+                                {isExpanded && (
+                                  <div style={{ padding: '24px', backgroundColor: 'var(--bg-primary)', borderTop: 'none' }}>
+                                    {sect.id === 'hero' && (
+                                      <>
+                                        <div className="form-group">
+                                          <label className="form-label">Hero Title</label>
+                                          <input type="text" name="home_hero_title" value={cmsForm.home_hero_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Hero Subtitle</label>
+                                          <textarea name="home_hero_subtitle" value={cmsForm.home_hero_subtitle || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                          <div className="form-group">
+                                            <label className="form-label">Primary CTA Label</label>
+                                            <input type="text" name="home_hero_cta_primary" value={cmsForm.home_hero_cta_primary || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                          <div className="form-group">
+                                            <label className="form-label">Secondary CTA Label</label>
+                                            <input type="text" name="home_hero_cta_secondary" value={cmsForm.home_hero_cta_secondary || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'trusted_by' && (
+                                      <>
+                                        <div className="form-group">
+                                          <label className="form-label">Trusted By Headline</label>
+                                          <input type="text" name="home_trusted_by_title" value={cmsForm.home_trusted_by_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Certified Stacks Subtitle</label>
+                                          <input type="text" name="home_trusted_by_subtitle" value={cmsForm.home_trusted_by_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'intro' && (
+                                      <>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                          <div className="form-group">
+                                            <label className="form-label">Section Eyebrow</label>
+                                            <input type="text" name="home_intro_title" value={cmsForm.home_intro_title || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                          <div className="form-group">
+                                            <label className="form-label">Section Title</label>
+                                            <input type="text" name="home_intro_subtitle" value={cmsForm.home_intro_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Who We Are Description</label>
+                                          <textarea name="home_intro_description" value={cmsForm.home_intro_description || ''} onChange={handleCmsChange} className="form-control" rows={4} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'services' && (
+                                      <>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                          <div className="form-group">
+                                            <label className="form-label">Services Title</label>
+                                            <input type="text" name="home_services_title" value={cmsForm.home_services_title || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                          <div className="form-group">
+                                            <label className="form-label">Services Eyebrow</label>
+                                            <input type="text" name="home_services_subtitle" value={cmsForm.home_services_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                          </div>
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Services Description</label>
+                                          <textarea name="home_services_description" value={cmsForm.home_services_description || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'projects' && (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <div className="form-group">
+                                          <label className="form-label">Projects Title</label>
+                                          <input type="text" name="home_projects_title" value={cmsForm.home_projects_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Projects Subtitle</label>
+                                          <input type="text" name="home_projects_subtitle" value={cmsForm.home_projects_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {sect.id === 'github' && (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <div className="form-group">
+                                          <label className="form-label">Github Title</label>
+                                          <input type="text" name="home_github_title" value={cmsForm.home_github_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Github Subtitle</label>
+                                          <input type="text" name="home_github_subtitle" value={cmsForm.home_github_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {sect.id === 'tech_stack' && (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <div className="form-group">
+                                          <label className="form-label">Tech Stack Title</label>
+                                          <input type="text" name="home_tech_stack_title" value={cmsForm.home_tech_stack_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Tech Stack Subtitle</label>
+                                          <input type="text" name="home_tech_stack_subtitle" value={cmsForm.home_tech_stack_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {sect.id === 'why_us' && (
+                                      <>
+                                        <div className="form-group">
+                                          <label className="form-label">Why Choose Us Title</label>
+                                          <input type="text" name="home_why_us_title" value={cmsForm.home_why_us_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Why Choose Us Description</label>
+                                          <textarea name="home_why_us_subtitle" value={cmsForm.home_why_us_subtitle || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'process' && (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <div className="form-group">
+                                          <label className="form-label">Process Title</label>
+                                          <input type="text" name="home_process_title" value={cmsForm.home_process_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Process Subtitle</label>
+                                          <input type="text" name="home_process_subtitle" value={cmsForm.home_process_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {sect.id === 'testimonials' && (
+                                      <>
+                                        <div className="form-group">
+                                          <label className="form-label">Testimonials Title</label>
+                                          <input type="text" name="home_testimonials_title" value={cmsForm.home_testimonials_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Testimonials Subtitle</label>
+                                          <textarea name="home_testimonials_subtitle" value={cmsForm.home_testimonials_subtitle || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'cta_block' && (
+                                      <>
+                                        <div className="form-group">
+                                          <label className="form-label">CTA Block Title</label>
+                                          <input type="text" name="home_cta_title" value={cmsForm.home_cta_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">CTA Block Subtitle</label>
+                                          <textarea name="home_cta_subtitle" value={cmsForm.home_cta_subtitle || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {sect.id === 'contact' && (
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                        <div className="form-group">
+                                          <label className="form-label">Quick Message Title</label>
+                                          <input type="text" name="home_contact_title" value={cmsForm.home_contact_title || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label">Cost Estimator Title</label>
+                                          <input type="text" name="home_contact_subtitle" value={cmsForm.home_contact_subtitle || ''} onChange={handleCmsChange} className="form-control" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Right: Global Settings */}
+                      <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '30px' }} className="global-settings-col">
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Global Brand & SEO Details
+                        </h4>
+                        
+                        <div className="form-group">
+                          <label className="form-label">Site Title (SEO)</label>
+                          <input type="text" name="seo_title" value={cmsForm.seo_title || ''} onChange={handleCmsChange} className="form-control" />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Site Description (SEO)</label>
+                          <textarea name="seo_description" value={cmsForm.seo_description || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Logo Brand Text</label>
+                            <input type="text" name="site_logo_text" value={cmsForm.site_logo_text || ''} onChange={handleCmsChange} className="form-control" />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Favicon Path</label>
+                            <input type="text" name="site_favicon_url" value={cmsForm.site_favicon_url || ''} onChange={handleCmsChange} className="form-control" />
+                          </div>
+                        </div>
+
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '32px', marginBottom: '20px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Company Profile HQ
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Contact Email</label>
+                            <input type="email" name="contact_email" value={cmsForm.contact_email || ''} onChange={handleCmsChange} className="form-control" />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Contact Phone</label>
+                            <input type="text" name="contact_phone" value={cmsForm.contact_phone || ''} onChange={handleCmsChange} className="form-control" />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">HQ Address</label>
+                          <input type="text" name="contact_address" value={cmsForm.contact_address || ''} onChange={handleCmsChange} className="form-control" />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">WhatsApp URL Link</label>
+                          <input type="url" name="whatsapp_link" value={cmsForm.whatsapp_link || ''} onChange={handleCmsChange} className="form-control" />
+                        </div>
+
+                        <div className="form-group" style={{ marginTop: '20px' }}>
+                          <label className="form-label">Company Profile Story (Footer)</label>
+                          <textarea name="company_story" value={cmsForm.company_story || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '30px', display: 'flex', justifyContent: 'flex-end' }}>
+                      <button type="submit" className="btn btn-primary" style={{ padding: '12px 32px' }}>
+                        Save and Publish Changes
+                      </button>
+                    </div>
                   </form>
                 </div>
               )}

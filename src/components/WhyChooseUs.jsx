@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, Sparkles, Cpu, BadgeCheck, Users, HelpCircle } from 'lucide-react';
 
-export default function WhyChooseUs() {
+export default function WhyChooseUs({ cms = {} }) {
   const cards = [
     { title: 'Rigorous Engineering', desc: 'Every codebase is built following strict static analysis, unit checks, and clean routing standards.', icon: <Cpu size={20} /> },
     { title: 'Rapid Delivery Cycles', desc: 'Using decoupled micro-architectures enables faster visual prototype deployments and testing loops.', icon: <Sparkles size={20} /> },
@@ -12,8 +12,8 @@ export default function WhyChooseUs() {
   return (
     <section className="section" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div className="container">
-        <h2 className="section-title">Why Brainfeels Tech</h2>
-        <p className="section-subtitle">We build resilient digital products designed to accelerate operations with zero downtime anomalies.</p>
+        <h2 className="section-title">{cms.home_why_us_title || 'Why Brainfeels Tech'}</h2>
+        <p className="section-subtitle">{cms.home_why_us_subtitle || 'We build resilient digital products designed to accelerate operations with zero downtime anomalies.'}</p>
         
         <div className="grid grid-2">
           {cards.map((card, idx) => (

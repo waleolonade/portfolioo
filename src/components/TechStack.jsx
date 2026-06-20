@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Server, Database, Settings } from 'lucide-react';
 
-export default function TechStack() {
+export default function TechStack({ cms = {} }) {
   const stackCategories = [
     {
       title: "Frontend Engineering",
@@ -34,9 +34,9 @@ export default function TechStack() {
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: '52px' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: '12px' }}>
-            Technologies
+            {cms.home_tech_stack_subtitle || 'Technologies'}
           </span>
-          <h2 className="section-title" style={{ marginBottom: '16px' }}>Core Technology Stack</h2>
+          <h2 className="section-title" style={{ marginBottom: '16px' }}>{cms.home_tech_stack_title || 'Core Technology Stack'}</h2>
           <p className="section-subtitle" style={{ marginBottom: 0 }}>
             Industry-leading frameworks and modern database engines powering resilient digital solutions.
           </p>

@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, Lock, ArrowRight, UserCheck, Menu, X } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ cms = {} }) {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const isAdminLoggedIn = !!localStorage.getItem('adminToken');
+  
+  const logoText = cms.site_logo_text || 'Brainfeels Tech';
+  const logoIcon = logoText.charAt(0);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -37,8 +40,8 @@ export default function Navbar() {
     <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}>
       <div className="container nav-container">
         <Link to="/" className="logo-text" onClick={closeMenu}>
-          <span className="logo-icon">B</span>
-          Brainfeels Tech
+          <span className="logo-icon">{logoIcon}</span>
+          {logoText}
         </Link>
 
         {/* Desktop Nav Links */}
@@ -87,7 +90,7 @@ export default function Navbar() {
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`} onClick={closeMenu}>
         <div className="mobile-nav-drawer" onClick={e => e.stopPropagation()}>
           <div className="mobile-nav-header">
-            <span className="logo-text"><span className="logo-icon">B</span> Brainfeels Tech</span>
+            <span className="logo-text"><span className="logo-icon">{logoIcon}</span> {logoText}</span>
             <button onClick={closeMenu} className="btn btn-outline" style={{ padding: '6px' }}><X size={18} /></button>
           </div>
           

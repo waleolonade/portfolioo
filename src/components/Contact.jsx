@@ -5,9 +5,8 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
-export default function Contact() {
+export default function Contact({ cms = {} }) {
   const [activeTab, setActiveTab] = useState('message'); // message, quote, booking
-  const [cms, setCms] = useState({});
   
   // Tab 1: Message Form State
   const [msgForm, setMsgForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -26,14 +25,6 @@ export default function Contact() {
   });
 
   const [status, setStatus] = useState({ submitting: false, success: null, error: null });
-
-  useEffect(() => {
-    // Load CMS contact settings
-    fetch(`${API_BASE_URL}/cms.php`)
-      .then(res => res.json())
-      .then(data => setCms(data || {}))
-      .catch(err => console.error('Failed to load CMS settings', err));
-  }, []);
 
   // Update Quote Estimate calculation on the fly
   useEffect(() => {
@@ -121,9 +112,9 @@ export default function Contact() {
     <section id="contact" className="section" style={{ borderTop: '1px solid var(--border)' }}>
       <div className="container">
         
-        <h2 className="section-title">Start a Conversation</h2>
+        <h2 className="section-title">{cms.home_cta_title || 'Start a Conversation'}</h2>
         <p className="section-subtitle">
-          Contact our engineers directly, request a dynamic project cost estimate, or schedule a video briefing.
+          {cms.home_cta_subtitle || 'Contact our engineers directly, request a dynamic project cost estimate, or schedule a video briefing.'}
         </p>
 
         {/* Dynamic switcher tabs */}
@@ -135,10 +126,10 @@ export default function Contact() {
           flexWrap: 'wrap'
         }}>
           <button onClick={() => { setActiveTab('message'); setStatus({ submitting: false, success: null, error: null }); }} className={`btn ${activeTab === 'message' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-            Quick Message
+            {cms.home_contact_title || 'Quick Message'}
           </button>
           <button onClick={() => { setActiveTab('quote'); setStatus({ submitting: false, success: null, error: null }); }} className={`btn ${activeTab === 'quote' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-            <Calculator size={14} style={{ marginRight: '6px' }} /> Cost Estimator
+            <Calculator size={14} style={{ marginRight: '6px' }} /> {cms.home_contact_subtitle || 'Cost Estimator'}
           </button>
           <button onClick={() => { setActiveTab('booking'); setStatus({ submitting: false, success: null, error: null }); }} className={`btn ${activeTab === 'booking' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
             <Calendar size={14} style={{ marginRight: '6px' }} /> Schedule Briefing

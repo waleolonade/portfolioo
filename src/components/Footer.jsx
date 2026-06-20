@@ -35,7 +35,9 @@ const LinkedinIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export default function Footer() {
+export default function Footer({ cms = {} }) {
+  const logoText = cms.site_logo_text || 'Brainfeels Tech';
+
   return (
     <footer style={{ 
       backgroundColor: 'var(--bg-secondary)', 
@@ -65,10 +67,10 @@ export default function Footer() {
               WebkitTextFillColor: 'transparent',
               display: 'block' 
             }}>
-              Brainfeels Tech
+              {logoText}
             </span>
             <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
-              Brainfeels Tech helps businesses design, develop, and scale high-performance digital products and cloud-native solutions.
+              {cms.company_story || 'Brainfeels Tech helps businesses design, develop, and scale high-performance digital products and cloud-native solutions.'}
             </p>
             <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
               <a href="https://github.com/waleolonade" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>
@@ -117,19 +119,19 @@ export default function Footer() {
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.9rem' }}>
               <li style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                 <MapPin size={16} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
-                <span style={{ color: 'var(--text-muted)' }}>Lagos, Nigeria</span>
+                <span style={{ color: 'var(--text-muted)' }}>{cms.contact_address || 'Lagos, Nigeria'}</span>
               </li>
               <li style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Mail size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                <a href="mailto:brainfeelstech@gmail.com" style={{ color: 'var(--text-muted)' }}>brainfeelstech@gmail.com</a>
+                <a href={`mailto:${cms.contact_email || 'brainfeelstech@gmail.com'}`} style={{ color: 'var(--text-muted)' }}>{cms.contact_email || 'brainfeelstech@gmail.com'}</a>
               </li>
               <li style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Phone size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                <a href="tel:08061657738" style={{ color: 'var(--text-muted)' }}>08061657738</a>
+                <a href={`tel:${cms.contact_phone || '08061657738'}`} style={{ color: 'var(--text-muted)' }}>{cms.contact_phone || '08061657738'}</a>
               </li>
               <li style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <MessageCircle size={16} style={{ color: '#25D366', flexShrink: 0 }} />
-                <a href="https://wa.me/2348061657738" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>WhatsApp Chat</a>
+                <a href={cms.whatsapp_link || 'https://wa.me/2348061657738'} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)' }}>WhatsApp Chat</a>
               </li>
             </ul>
           </div>
@@ -148,7 +150,7 @@ export default function Footer() {
           fontSize: '0.85rem',
           color: 'var(--text-muted)'
         }}>
-          <p>© {new Date().getFullYear()} Brainfeels Tech. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {logoText}. All rights reserved.</p>
           <div style={{ display: 'flex', gap: '20px' }}>
             <Link to="/portal" style={{ color: 'var(--text-muted)' }}>Admin Login</Link>
             <Link to="/" style={{ color: 'var(--text-muted)' }}>Privacy Policy</Link>

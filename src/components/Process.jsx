@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Map, Layout, Code2, ShieldAlert, Rocket } from 'lucide-react';
 
-export default function Process() {
+export default function Process({ cms = {} }) {
   const steps = [
     { icon: <Search size={20} />, title: "Discovery", desc: "We analyze project parameters, compile objectives, and establish estimate projections.", color: '#6366f1' },
     { icon: <Map size={20} />, title: "Planning", desc: "Technical design blueprints, database schemas, and API endpoint integration maps.", color: '#14b8a6' },
@@ -18,9 +18,9 @@ export default function Process() {
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: '12px' }}>
             How We Work
           </span>
-          <h2 className="section-title" style={{ marginBottom: '16px' }}>Our Engineering Process</h2>
+          <h2 className="section-title" style={{ marginBottom: '16px' }}>{cms.home_process_title || 'Our Engineering Process'}</h2>
           <p className="section-subtitle" style={{ marginBottom: 0 }}>
-            Six structured phases to guarantee zero-regression deployments and reliable timelines.
+            {cms.home_process_subtitle || 'Six structured phases to guarantee zero-regression deployments and reliable timelines.'}
           </p>
         </div>
 

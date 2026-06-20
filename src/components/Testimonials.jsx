@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Quote, Star } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
-export default function Testimonials() {
+export default function Testimonials({ cms = {} }) {
   const [testimonials, setTestimonials] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,9 +25,9 @@ export default function Testimonials() {
   return (
     <section id="testimonials" className="section" style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-primary)' }}>
       <div className="container">
-        <h2 className="section-title">Client Testimonials</h2>
+        <h2 className="section-title">{cms.home_testimonials_title || 'Client Testimonials'}</h2>
         <p className="section-subtitle">
-          Read what VP level engineering managers and CTOs say about our deployment speed and technical execution.
+          {cms.home_testimonials_subtitle || 'Read what VP level engineering managers and CTOs say about our deployment speed and technical execution.'}
         </p>
 
         <div className="grid grid-2" style={{ gap: '30px' }}>
