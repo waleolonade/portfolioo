@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CmsContext } from '../App';
 import { 
   ShieldCheck, LayoutDashboard, Briefcase, MessageSquare, LogOut, Plus, 
   Edit, Trash2, Mail, Check, AlertCircle, ExternalLink, Calendar, X, 
@@ -23,6 +24,7 @@ const DEFAULT_LAYOUT = [
 ];
 
 export default function Dashboard() {
+  const { reloadCms } = useContext(CmsContext) || {};
   const [activeTab, setActiveTab] = useState('overview'); // overview, cms, projects, services, leads, careers, ai
   const [projects, setProjects] = useState([]);
   const [services, setServices] = useState([]);
@@ -32,6 +34,89 @@ export default function Dashboard() {
   const [cmsForm, setCmsForm] = useState({});
   const [layout, setLayout] = useState([]);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [cmsSubTab, setCmsSubTab] = useState('layout'); // layout, branding, header, footer, social, whatsapp, theme, seo
+  
+  // Custom Customizer Sub-States
+  const [brandAssets, setBrandAssets] = useState({
+    logo_text: 'Brainfeels Tech',
+    logo_type: 'text',
+    logo_url_light: '',
+    logo_url_dark: '',
+    favicon_url: '/favicon.svg',
+    symbol_url: '',
+    logo_width: 180,
+    logo_height: 45,
+    mobile_logo_url: '',
+    sticky_logo_url: '',
+    show_tagline: false,
+    tagline: 'Innovative Software Engineering'
+  });
+  const [headerBuilder, setHeaderBuilder] = useState({
+    layout_type: 'classic',
+    is_sticky: true,
+    is_transparent: false,
+    elements: [
+      { id: 'logo', visible: true },
+      { id: 'nav_links', visible: true },
+      { id: 'cta_button', visible: true },
+      { id: 'theme_toggle', visible: true }
+    ],
+    cta_text: 'Get a Free Quote',
+    cta_link: '#/contact'
+  });
+  const [footerBuilder, setFooterBuilder] = useState({
+    layout_type: 'grid',
+    columns_count: 4,
+    copyright_text: '© 2026 Brainfeels Tech. All rights reserved.',
+    legal_links: [
+      { label: 'Privacy Policy', url: '#/privacy' },
+      { label: 'Terms of Service', url: '#/terms' }
+    ],
+    newsletter_enabled: true,
+    newsletter_title: 'Subscribe to our Newsletter',
+    newsletter_placeholder: 'Enter your email address',
+    map_iframe_url: '',
+    map_enabled: true
+  });
+  const [socialManagement, setSocialManagement] = useState({
+    networks: [
+      { name: 'Facebook', url: '', enabled: false, show_badge: false },
+      { name: 'Twitter', url: '', enabled: false, show_badge: false },
+      { name: 'LinkedIn', url: '', enabled: false, show_badge: false },
+      { name: 'GitHub', url: '', enabled: false, show_badge: false },
+      { name: 'Instagram', url: '', enabled: false, show_badge: false }
+    ]
+  });
+  const [whatsappHub, setWhatsappHub] = useState({
+    widget_enabled: true,
+    widget_title: 'Need Help? Chat with Us',
+    widget_subtitle: 'We usually respond in a few minutes',
+    agents: []
+  });
+  const [themeCustomizer, setThemeCustomizer] = useState({
+    font_family_heading: 'Inter',
+    font_family_body: 'Outfit',
+    color_primary: '#0f172a',
+    color_secondary: '#3b82f6',
+    color_bg_light: '#ffffff',
+    color_bg_dark: '#0f172a',
+    color_text_light: '#1e293b',
+    color_text_dark: '#f8fafc',
+    color_accent: '#f59e0b',
+    border_radius: 8
+  });
+  const [seoVisibility, setSeoVisibility] = useState({
+    robots_txt: 'User-agent: *\nDisallow: /api/\nAllow: /',
+    og_title: '',
+    og_description: '',
+    og_image: '',
+    company_schema: ''
+  });
+  const [agentForm, setAgentForm] = useState({
+    id: '', name: '', phone: '', department: 'Technical', welcome_message: '', avatar: '', is_online: true
+  });
+  const [editingAgentIndex, setEditingAgentIndex] = useState(-1);
+
   const [stats, setStats] = useState({ totalProjects: 0, totalServices: 0, totalLeads: 0, totalJobs: 0 });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({ success: null, error: null });
@@ -66,6 +151,109 @@ export default function Dashboard() {
   const token = localStorage.getItem('adminToken');
   const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
   const role = user.role || 'Super Admin';
+
+  const networks = socialManagement.networks || [];
+  const agents = whatsappHub.agents || [];
+
+  const handleSocialNetworkChange = (netName, field, value) => {
+    setSocialManagement(prev => {
+      const currentNetworks = prev.networks || [];
+      const updatedNetworks = currentNetworks.map(n => {
+        if (n.name.toLowerCase() === netName.toLowerCase()) {
+          return { ...n, [field]: value };
+        }
+        return n;
+      });
+      
+      const exists = currentNetworks.some(n => n.name.toLowerCase() === netName.toLowerCase());
+      if (!exists) {
+        updatedNetworks.push({
+          name: netName,
+          url: field === 'url' ? value : '',
+          enabled: field === 'enabled' ? value : false,
+          show_badge: field === 'show_badge' ? value : false
+        });
+      }
+      
+      return { ...prev, networks: updatedNetworks };
+    });
+  };
+
+  const handleSaveAgent = () => {
+    if (!agentForm.name || !agentForm.phone) {
+      showFeedback('error', 'Agent Name and WhatsApp Phone Number are required.');
+      return;
+    }
+    
+    setWhatsappHub(prev => {
+      const currentAgents = [...(prev.agents || [])];
+      if (editingAgentIndex > -1) {
+        currentAgents[editingAgentIndex] = {
+          ...currentAgents[editingAgentIndex],
+          name: agentForm.name,
+          phone: agentForm.phone,
+          department: agentForm.department,
+          welcome_message: agentForm.welcome_message,
+          avatar: agentForm.avatar,
+          is_online: agentForm.is_online
+        };
+      } else {
+        currentAgents.push({
+          id: Date.now().toString(),
+          name: agentForm.name,
+          phone: agentForm.phone,
+          department: agentForm.department,
+          welcome_message: agentForm.welcome_message,
+          avatar: agentForm.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80',
+          is_online: agentForm.is_online
+        });
+      }
+      return { ...prev, agents: currentAgents };
+    });
+    
+    setEditingAgentIndex(-1);
+    setAgentForm({
+      id: '',
+      name: '',
+      phone: '',
+      department: 'Technical',
+      welcome_message: '',
+      avatar: '',
+      is_online: true
+    });
+    showFeedback('success', editingAgentIndex > -1 ? 'Agent updated successfully.' : 'Agent added successfully.');
+  };
+
+  const handleEditAgent = (index) => {
+    const agent = agents[index];
+    if (agent) {
+      setAgentForm({
+        id: agent.id || '',
+        name: agent.name || '',
+        phone: agent.phone || '',
+        department: agent.department || 'Technical',
+        welcome_message: agent.welcome_message || '',
+        avatar: agent.avatar || '',
+        is_online: agent.is_online !== false
+      });
+      setEditingAgentIndex(index);
+    }
+  };
+
+  const handleDeleteAgent = (index) => {
+    if (window.confirm('Are you sure you want to remove this support agent?')) {
+      setWhatsappHub(prev => {
+        const currentAgents = [...(prev.agents || [])];
+        currentAgents.splice(index, 1);
+        return { ...prev, agents: currentAgents };
+      });
+      showFeedback('success', 'Agent removed successfully.');
+      if (editingAgentIndex === index) {
+        setEditingAgentIndex(-1);
+        setAgentForm({ id: '', name: '', phone: '', department: 'Technical', welcome_message: '', avatar: '', is_online: true });
+      }
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -138,6 +326,26 @@ export default function Dashboard() {
       } else {
         setLayout(DEFAULT_LAYOUT);
       }
+
+      if (resCMS) {
+        const parseSetting = (key, defaultVal) => {
+          if (!resCMS[key]) return defaultVal;
+          try {
+            return typeof resCMS[key] === 'string' ? JSON.parse(resCMS[key]) : resCMS[key];
+          } catch(e) {
+            return defaultVal;
+          }
+        };
+        
+        setBrandAssets(parseSetting('cms_brand_assets', brandAssets));
+        setHeaderBuilder(parseSetting('cms_header_builder', headerBuilder));
+        setFooterBuilder(parseSetting('cms_footer_builder', footerBuilder));
+        setSocialManagement(parseSetting('cms_social_management', socialManagement));
+        setWhatsappHub(parseSetting('cms_whatsapp_hub', whatsappHub));
+        setThemeCustomizer(parseSetting('cms_theme_customizer', themeCustomizer));
+        setSeoVisibility(parseSetting('cms_seo_visibility', seoVisibility));
+      }
+
       setCareers(resCareers || []);
       
       if (resInquiries.ok) setInquiries(resInquiries.data || []);
@@ -192,11 +400,18 @@ export default function Dashboard() {
   };
 
   const handleSaveCms = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     try {
       const payload = {
         ...cmsForm,
-        homepage_layout: JSON.stringify(layout)
+        homepage_layout: JSON.stringify(layout),
+        cms_brand_assets: JSON.stringify(brandAssets),
+        cms_header_builder: JSON.stringify(headerBuilder),
+        cms_footer_builder: JSON.stringify(footerBuilder),
+        cms_social_management: JSON.stringify(socialManagement),
+        cms_whatsapp_hub: JSON.stringify(whatsappHub),
+        cms_theme_customizer: JSON.stringify(themeCustomizer),
+        cms_seo_visibility: JSON.stringify(seoVisibility)
       };
       const res = await adminFetch(`${API_BASE_URL}/cms.php`, {
         method: 'POST',
@@ -205,6 +420,7 @@ export default function Dashboard() {
       if (res.ok) {
         showFeedback('success', 'CMS settings updated successfully.');
         loadAllDashboardData();
+        if (typeof reloadCms === 'function') reloadCms();
       } else {
         throw new Error(res.data.message || 'Failed to save settings.');
       }
@@ -598,28 +814,50 @@ export default function Dashboard() {
               {activeTab === 'cms' && (
                 <div className="card" style={{ padding: '32px', textAlign: 'left' }}>
                   <form onSubmit={handleSaveCms}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
                       <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>WordPress-Style Site Customizer</h3>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Enterprise Site Builder</h3>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-                          Rearrange homepage sections, toggle visibility, and customize titles and text values from A to Z.
+                          Customize headers, footers, social platforms, live theme settings, and SEO visibility parameters.
                         </p>
                       </div>
                       <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>
-                        Publish Layout Changes
+                        Publish Customizer Changes
                       </button>
                     </div>
 
-                    {/* Left & Right customizer layout grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px' }} className="customizer-grid">
-                      
-                      {/* Left: Section Orderer */}
+                    {/* Customizer Sub-Tabs Navigation */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+                      {[
+                        { id: 'layout', label: 'Homepage Layout' },
+                        { id: 'branding', label: 'Brand Identity' },
+                        { id: 'header', label: 'Header Builder' },
+                        { id: 'footer', label: 'Footer Builder' },
+                        { id: 'social', label: 'Social Center' },
+                        { id: 'whatsapp', label: 'WhatsApp Hub' },
+                        { id: 'theme', label: 'Theme Customizer' },
+                        { id: 'seo', label: 'SEO & Visibility' }
+                      ].map(sub => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => setCmsSubTab(sub.id)}
+                          className={`btn ${cmsSubTab === sub.id ? 'btn-primary' : 'btn-outline'}`}
+                          style={{ padding: '6px 14px', fontSize: '0.825rem', borderRadius: '20px' }}
+                        >
+                          {sub.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* SUB-TAB 1: HOMEPAGE LAYOUT SECTION ORDER */}
+                    {cmsSubTab === 'layout' && (
                       <div>
                         <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '16px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                           Homepage Sections Order & Visibility
                         </h4>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '10px' }}>
                           {layout.map((sect, idx) => {
                             const isExpanded = expandedSection === sect.id;
                             return (
@@ -639,7 +877,6 @@ export default function Dashboard() {
                                   borderBottom: isExpanded ? '1px solid var(--border)' : 'none'
                                 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    {/* Handle & Order indicators */}
                                     <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', width: '20px' }}>
                                       {idx + 1}
                                     </span>
@@ -648,7 +885,6 @@ export default function Dashboard() {
                                     </span>
                                   </div>
                                   
-                                  {/* Ordering and Vis Actions */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <button 
                                       type="button" 
@@ -683,19 +919,18 @@ export default function Dashboard() {
                                     >
                                       {sect.visible ? 'Visible' : 'Hidden'}
                                     </button>
-
+ 
                                     <button 
                                       type="button" 
                                       onClick={() => setExpandedSection(isExpanded ? null : sect.id)} 
                                       className="btn btn-primary" 
                                       style={{ padding: '6px 14px', fontSize: '0.8rem' }}
                                     >
-                                      {isExpanded ? 'Collapse' : 'Customize'}
+                                      {isExpanded ? 'Collapse' : 'Customize Text'}
                                     </button>
                                   </div>
                                 </div>
-
-                                {/* Customizer inputs sub-form */}
+ 
                                 {isExpanded && (
                                   <div style={{ padding: '24px', backgroundColor: 'var(--bg-primary)', borderTop: 'none' }}>
                                     {sect.id === 'hero' && (
@@ -720,7 +955,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'trusted_by' && (
                                       <>
                                         <div className="form-group">
@@ -733,7 +968,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'intro' && (
                                       <>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -752,7 +987,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'services' && (
                                       <>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -771,7 +1006,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'projects' && (
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div className="form-group">
@@ -784,7 +1019,7 @@ export default function Dashboard() {
                                         </div>
                                       </div>
                                     )}
-
+ 
                                     {sect.id === 'github' && (
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div className="form-group">
@@ -797,7 +1032,7 @@ export default function Dashboard() {
                                         </div>
                                       </div>
                                     )}
-
+ 
                                     {sect.id === 'tech_stack' && (
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div className="form-group">
@@ -810,7 +1045,7 @@ export default function Dashboard() {
                                         </div>
                                       </div>
                                     )}
-
+ 
                                     {sect.id === 'why_us' && (
                                       <>
                                         <div className="form-group">
@@ -823,7 +1058,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'process' && (
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div className="form-group">
@@ -836,7 +1071,7 @@ export default function Dashboard() {
                                         </div>
                                       </div>
                                     )}
-
+ 
                                     {sect.id === 'testimonials' && (
                                       <>
                                         <div className="form-group">
@@ -849,7 +1084,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'cta_block' && (
                                       <>
                                         <div className="form-group">
@@ -862,7 +1097,7 @@ export default function Dashboard() {
                                         </div>
                                       </>
                                     )}
-
+ 
                                     {sect.id === 'contact' && (
                                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div className="form-group">
@@ -882,70 +1117,813 @@ export default function Dashboard() {
                           })}
                         </div>
                       </div>
+                    )}
 
-                      {/* Right: Global Settings */}
-                      <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '30px' }} className="global-settings-col">
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Global Brand & SEO Details
-                        </h4>
-                        
-                        <div className="form-group">
-                          <label className="form-label">Site Title (SEO)</label>
-                          <input type="text" name="seo_title" value={cmsForm.seo_title || ''} onChange={handleCmsChange} className="form-control" />
-                        </div>
-
-                        <div className="form-group">
-                          <label className="form-label">Site Description (SEO)</label>
-                          <textarea name="seo_description" value={cmsForm.seo_description || ''} onChange={handleCmsChange} className="form-control" rows={3} />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          <div className="form-group">
-                            <label className="form-label">Logo Brand Text</label>
-                            <input type="text" name="site_logo_text" value={cmsForm.site_logo_text || ''} onChange={handleCmsChange} className="form-control" />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Favicon Path</label>
-                            <input type="text" name="site_favicon_url" value={cmsForm.site_favicon_url || ''} onChange={handleCmsChange} className="form-control" />
-                          </div>
-                        </div>
-
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '32px', marginBottom: '20px', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Company Profile HQ
+                    {/* SUB-TAB 2: BRAND IDENTITY */}
+                    {cmsSubTab === 'branding' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Company Brand Assets
                         </h4>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                           <div className="form-group">
-                            <label className="form-label">Contact Email</label>
-                            <input type="email" name="contact_email" value={cmsForm.contact_email || ''} onChange={handleCmsChange} className="form-control" />
+                            <label className="form-label">Logo Display Formula</label>
+                            <select 
+                              value={brandAssets.logo_type || 'text'} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_type: e.target.value }))}
+                              className="form-control"
+                            >
+                              <option value="text">Text Logo Only</option>
+                              <option value="image">Image Logo Only</option>
+                              <option value="both">Both Text & Image Symbol</option>
+                            </select>
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Contact Phone</label>
-                            <input type="text" name="contact_phone" value={cmsForm.contact_phone || ''} onChange={handleCmsChange} className="form-control" />
+                            <label className="form-label">Favicon Path / URL</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.favicon_url || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, favicon_url: e.target.value }))}
+                              className="form-control"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Company Brand Title Text</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.logo_text || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_text: e.target.value }))}
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Symbol / Icon Mark URL</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.symbol_url || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, symbol_url: e.target.value }))}
+                              className="form-control"
+                              placeholder="e.g. /favicon.svg"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Light Mode Brand Logo URL</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.logo_url_light || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_url_light: e.target.value }))}
+                              className="form-control"
+                              placeholder="Supports direct image URLs or relative paths"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Dark Mode Brand Logo URL</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.logo_url_dark || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_url_dark: e.target.value }))}
+                              className="form-control"
+                              placeholder="If blank, uses light mode logo"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Logo Width Scaling (px)</label>
+                            <input 
+                              type="number" 
+                              value={brandAssets.logo_width || 180} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_width: parseInt(e.target.value) || 180 }))}
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Logo Height Scaling (px)</label>
+                            <input 
+                              type="number" 
+                              value={brandAssets.logo_height || 45} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, logo_height: parseInt(e.target.value) || 45 }))}
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="form-group" style={{ display: 'flex', alignItems: 'center', marginTop: '24px' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                              <input 
+                                type="checkbox" 
+                                checked={!!brandAssets.show_tagline} 
+                                onChange={(e) => setBrandAssets(prev => ({ ...prev, show_tagline: e.target.checked }))}
+                              /> Show Tagline Under Text Logo
+                            </label>
+                          </div>
+                        </div>
+
+                        {brandAssets.show_tagline && (
+                          <div className="form-group">
+                            <label className="form-label">Company Brand Tagline</label>
+                            <input 
+                              type="text" 
+                              value={brandAssets.tagline || ''} 
+                              onChange={(e) => setBrandAssets(prev => ({ ...prev, tagline: e.target.value }))}
+                              className="form-control"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SUB-TAB 3: HEADER BUILDER */}
+                    {cmsSubTab === 'header' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Navigation Header Settings
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Header Preset Layout</label>
+                            <select 
+                              value={headerBuilder.layout_type || 'classic'} 
+                              onChange={(e) => setHeaderBuilder(prev => ({ ...prev, layout_type: e.target.value }))}
+                              className="form-control"
+                            >
+                              <option value="classic">Classic (Logo left, links center, CTA right)</option>
+                              <option value="centered">Centered (Logo center, links & actions aligned)</option>
+                              <option value="minimal">Minimal (Logo left, full menu drawer hamburger right)</option>
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', gap: '20px', marginTop: '32px' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={headerBuilder.is_sticky !== false} 
+                                onChange={(e) => setHeaderBuilder(prev => ({ ...prev, is_sticky: e.target.checked }))}
+                              /> Sticky on scroll
+                            </label>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={!!headerBuilder.is_transparent} 
+                                onChange={(e) => setHeaderBuilder(prev => ({ ...prev, is_transparent: e.target.checked }))}
+                              /> Transparent header overlay (Home Hero)
+                            </label>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">CTA Button Label</label>
+                            <input 
+                              type="text" 
+                              value={headerBuilder.cta_text || ''} 
+                              onChange={(e) => setHeaderBuilder(prev => ({ ...prev, cta_text: e.target.value }))}
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">CTA Button Link</label>
+                            <input 
+                              type="text" 
+                              value={headerBuilder.cta_link || ''} 
+                              onChange={(e) => setHeaderBuilder(prev => ({ ...prev, cta_link: e.target.value }))}
+                              className="form-control"
+                              placeholder="e.g. #/contact or /portal"
+                            />
                           </div>
                         </div>
 
                         <div className="form-group">
-                          <label className="form-label">HQ Address</label>
-                          <input type="text" name="contact_address" value={cmsForm.contact_address || ''} onChange={handleCmsChange} className="form-control" />
-                        </div>
-
-                        <div className="form-group">
-                          <label className="form-label">WhatsApp URL Link</label>
-                          <input type="url" name="whatsapp_link" value={cmsForm.whatsapp_link || ''} onChange={handleCmsChange} className="form-control" />
-                        </div>
-
-                        <div className="form-group" style={{ marginTop: '20px' }}>
-                          <label className="form-label">Company Profile Story (Footer)</label>
-                          <textarea name="company_story" value={cmsForm.company_story || ''} onChange={handleCmsChange} className="form-control" rows={3} />
+                          <label className="form-label" style={{ marginBottom: '12px' }}>Active Header Elements</label>
+                          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                            {(headerBuilder.elements || []).map((el, index) => (
+                              <label key={el.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={el.visible !== false} 
+                                  onChange={(e) => {
+                                    const updatedElements = [...headerBuilder.elements];
+                                    updatedElements[index] = { ...el, visible: e.target.checked };
+                                    setHeaderBuilder(prev => ({ ...prev, elements: updatedElements }));
+                                  }}
+                                />
+                                {el.id === 'logo' && 'Company Logo'}
+                                {el.id === 'nav_links' && 'Navigation links'}
+                                {el.id === 'cta_button' && 'CTA Action Button'}
+                                {el.id === 'theme_toggle' && 'Theme Toggle Button'}
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
+                    )}
 
-                    </div>
+                    {/* SUB-TAB 4: FOOTER BUILDER */}
+                    {cmsSubTab === 'footer' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Footer Customizer settings
+                        </h4>
 
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '30px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Columns Count Matrix (1 - 6)</label>
+                            <select 
+                              value={footerBuilder.columns_count || 4} 
+                              onChange={(e) => setFooterBuilder(prev => ({ ...prev, columns_count: parseInt(e.target.value) || 4 }))}
+                              className="form-control"
+                            >
+                              <option value="1">1 Column (Brand Details Only)</option>
+                              <option value="2">2 Columns (Brand + Navigation)</option>
+                              <option value="3">3 Columns (Brand + Navigation + Services)</option>
+                              <option value="4">4 Columns (Standard: Brand + Nav + Services + Contact HQ)</option>
+                              <option value="5">5 Columns (Standard + Business Hours)</option>
+                              <option value="6">6 Columns (Standard + Business Hours + Live Map Location)</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Copyright Notice Text</label>
+                            <input 
+                              type="text" 
+                              value={footerBuilder.copyright_text || ''} 
+                              onChange={(e) => setFooterBuilder(prev => ({ ...prev, copyright_text: e.target.value }))}
+                              className="form-control"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ border: '1px dashed var(--border)', padding: '20px', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Newsletter Subscription</strong>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                              <input 
+                                type="checkbox" 
+                                checked={footerBuilder.newsletter_enabled !== false} 
+                                onChange={(e) => setFooterBuilder(prev => ({ ...prev, newsletter_enabled: e.target.checked }))}
+                              /> Enable Newsletter Bar
+                            </label>
+                          </div>
+
+                          {footerBuilder.newsletter_enabled !== false && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label">Newsletter Title</label>
+                                <input 
+                                  type="text" 
+                                  value={footerBuilder.newsletter_title || ''} 
+                                  onChange={(e) => setFooterBuilder(prev => ({ ...prev, newsletter_title: e.target.value }))}
+                                  className="form-control"
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label">Input Placeholder</label>
+                                <input 
+                                  type="text" 
+                                  value={footerBuilder.newsletter_placeholder || ''} 
+                                  onChange={(e) => setFooterBuilder(prev => ({ ...prev, newsletter_placeholder: e.target.value }))}
+                                  className="form-control"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ border: '1px dashed var(--border)', padding: '20px', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Embedded Location Map</strong>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                              <input 
+                                type="checkbox" 
+                                checked={footerBuilder.map_enabled !== false} 
+                                onChange={(e) => setFooterBuilder(prev => ({ ...prev, map_enabled: e.target.checked }))}
+                              /> Embed Google Map
+                            </label>
+                          </div>
+
+                          {footerBuilder.map_enabled !== false && (
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label">Google Maps Iframe Source URL (Embed URL)</label>
+                              <input 
+                                type="text" 
+                                value={footerBuilder.map_iframe_url || ''} 
+                                onChange={(e) => setFooterBuilder(prev => ({ ...prev, map_iframe_url: e.target.value }))}
+                                className="form-control"
+                                placeholder="Paste the src attribute of Google Maps iframe embed"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUB-TAB 5: SOCIAL CENTER */}
+                    {cmsSubTab === 'social' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Social Media Integrations (20+ Platforms)
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                          {[
+                            'Facebook', 'Twitter', 'LinkedIn', 'GitHub', 'Instagram', 'YouTube', 'TikTok',
+                            'Reddit', 'Pinterest', 'Telegram', 'WhatsApp', 'Slack', 'Discord', 'Behance',
+                            'Dribbble', 'Medium', 'Twitch', 'Spotify', 'Apple Podcasts', 'Snapchat'
+                          ].map(netName => {
+                            const config = networks.find(n => n.name.toLowerCase() === netName.toLowerCase()) || { url: '', enabled: false, show_badge: false };
+                            return (
+                              <div key={netName} style={{ border: '1px solid var(--border)', padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                  <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{netName}</strong>
+                                  <div style={{ display: 'flex', gap: '10px' }}>
+                                    <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        checked={!!config.enabled} 
+                                        onChange={(e) => handleSocialNetworkChange(netName, 'enabled', e.target.checked)}
+                                      /> Active
+                                    </label>
+                                    <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        checked={!!config.show_badge} 
+                                        onChange={(e) => handleSocialNetworkChange(netName, 'show_badge', e.target.checked)}
+                                      /> Badge
+                                    </label>
+                                  </div>
+                                </div>
+                                <input 
+                                  type="url" 
+                                  placeholder={`${netName} profile link`} 
+                                  value={config.url || ''} 
+                                  onChange={(e) => handleSocialNetworkChange(netName, 'url', e.target.value)}
+                                  className="form-control"
+                                  style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUB-TAB 6: WHATSAPP HUB */}
+                    {cmsSubTab === 'whatsapp' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          WhatsApp Departmental Multi-Agent Routing
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={whatsappHub.widget_enabled !== false} 
+                                onChange={(e) => setWhatsappHub(prev => ({ ...prev, widget_enabled: e.target.checked }))}
+                              /> Enable Floating WhatsApp Widget
+                            </label>
+                          </div>
+                          <div></div>
+                        </div>
+
+                        {whatsappHub.widget_enabled !== false && (
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                              <div className="form-group">
+                                <label className="form-label">Widget Card Title</label>
+                                <input 
+                                  type="text" 
+                                  value={whatsappHub.widget_title || ''} 
+                                  onChange={(e) => setWhatsappHub(prev => ({ ...prev, widget_title: e.target.value }))}
+                                  className="form-control"
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Widget Card Subtitle</label>
+                                <input 
+                                  type="text" 
+                                  value={whatsappHub.widget_subtitle || ''} 
+                                  onChange={(e) => setWhatsappHub(prev => ({ ...prev, widget_subtitle: e.target.value }))}
+                                  className="form-control"
+                                />
+                              </div>
+                            </div>
+
+                            {/* CRUD Agent Editor Form */}
+                            <div style={{ border: '1px dashed var(--border)', padding: '24px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)' }}>
+                              <h5 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '16px', color: 'var(--primary)' }}>
+                                {editingAgentIndex > -1 ? 'Edit Support Agent Record' : 'Configure New Support Agent'}
+                              </h5>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label">Agent Full Name</label>
+                                  <input 
+                                    type="text" 
+                                    value={agentForm.name} 
+                                    onChange={(e) => setAgentForm(prev => ({ ...prev, name: e.target.value }))}
+                                    className="form-control"
+                                    placeholder="e.g. John Doe"
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label">WhatsApp Number (with Country Code, no +)</label>
+                                  <input 
+                                    type="text" 
+                                    value={agentForm.phone} 
+                                    onChange={(e) => setAgentForm(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }))}
+                                    className="form-control"
+                                    placeholder="e.g. 2348061657738"
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label">Department Badge</label>
+                                  <select 
+                                    value={agentForm.department} 
+                                    onChange={(e) => setAgentForm(prev => ({ ...prev, department: e.target.value }))}
+                                    className="form-control"
+                                  >
+                                    <option>Technical</option>
+                                    <option>Sales</option>
+                                    <option>HR</option>
+                                    <option>Billing</option>
+                                    <option>Support</option>
+                                  </select>
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label">Avatar Image URL</label>
+                                  <input 
+                                    type="text" 
+                                    value={agentForm.avatar} 
+                                    onChange={(e) => setAgentForm(prev => ({ ...prev, avatar: e.target.value }))}
+                                    className="form-control"
+                                    placeholder="Unsplash URL or relative image path"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="form-group" style={{ marginBottom: '16px' }}>
+                                <label className="form-label">Prefilled Message Template</label>
+                                <input 
+                                  type="text" 
+                                  value={agentForm.welcome_message} 
+                                  onChange={(e) => setAgentForm(prev => ({ ...prev, welcome_message: e.target.value }))}
+                                  className="form-control"
+                                  placeholder="e.g. Hello Technical support, I have a question regarding integrations"
+                                />
+                              </div>
+
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={!!agentForm.is_online} 
+                                    onChange={(e) => setAgentForm(prev => ({ ...prev, is_online: e.target.checked }))}
+                                  /> Mark agent as Online
+                                </label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                  {editingAgentIndex > -1 && (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        setEditingAgentIndex(-1);
+                                        setAgentForm({ id: '', name: '', phone: '', department: 'Technical', welcome_message: '', avatar: '', is_online: true });
+                                      }}
+                                      className="btn btn-outline"
+                                      style={{ padding: '6px 16px', fontSize: '0.85rem' }}
+                                    >Cancel</button>
+                                  )}
+                                  <button 
+                                    type="button" 
+                                    onClick={handleSaveAgent}
+                                    className="btn btn-primary"
+                                    style={{ padding: '6px 20px', fontSize: '0.85rem' }}
+                                  >
+                                    {editingAgentIndex > -1 ? 'Update Agent' : 'Add Agent'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Active Agents Table */}
+                            <div style={{ marginTop: '16px' }}>
+                              <h5 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>Configured Support Agents</h5>
+                              <div className="table-responsive" style={{ margin: 0 }}>
+                                <table className="table">
+                                  <thead>
+                                    <tr>
+                                      <th>Agent</th>
+                                      <th>Phone</th>
+                                      <th>Department</th>
+                                      <th>Status</th>
+                                      <th>Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {agents.length === 0 ? (
+                                      <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No support agents defined.</td></tr>
+                                    ) : (
+                                      agents.map((agent, index) => (
+                                        <tr key={agent.id || index}>
+                                          <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                              <img src={agent.avatar} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} onError={e => e.target.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80'} />
+                                              <strong>{agent.name}</strong>
+                                            </div>
+                                          </td>
+                                          <td>+{agent.phone}</td>
+                                          <td><span className="badge badge-primary">{agent.department}</span></td>
+                                          <td>
+                                            <span style={{ 
+                                              color: agent.is_online !== false ? 'var(--success)' : 'var(--error)',
+                                              fontWeight: 700
+                                            }}>{agent.is_online !== false ? 'Online' : 'Offline'}</span>
+                                          </td>
+                                          <td>
+                                            <div className="actions-cell">
+                                              <button type="button" onClick={() => handleEditAgent(index)} className="btn btn-outline" style={{ padding: '6px', color: 'var(--primary)' }}><Edit size={14} /></button>
+                                              <button type="button" onClick={() => handleDeleteAgent(index)} className="btn btn-outline" style={{ padding: '6px', color: 'var(--error)' }}><Trash2 size={14} /></button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SUB-TAB 7: THEME CUSTOMIZER */}
+                    {cmsSubTab === 'theme' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Visual Styling Theme Builder
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Heading Font Family (Google Fonts)</label>
+                            <select 
+                              value={themeCustomizer.font_family_heading || 'Inter'}
+                              onChange={(e) => handleThemeCustomizerChange('font_family_heading', e.target.value)}
+                              className="form-control"
+                            >
+                              <option>Inter</option>
+                              <option>Outfit</option>
+                              <option>Plus Jakarta Sans</option>
+                              <option>Montserrat</option>
+                              <option>Playfair Display</option>
+                              <option>Poppins</option>
+                              <option>Roboto</option>
+                              <option>Lora</option>
+                              <option>Space Grotesk</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Body Font Family (Google Fonts)</label>
+                            <select 
+                              value={themeCustomizer.font_family_body || 'Outfit'}
+                              onChange={(e) => handleThemeCustomizerChange('font_family_body', e.target.value)}
+                              className="form-control"
+                            >
+                              <option>Inter</option>
+                              <option>Outfit</option>
+                              <option>Plus Jakarta Sans</option>
+                              <option>Montserrat</option>
+                              <option>Roboto</option>
+                              <option>Poppins</option>
+                              <option>Open Sans</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Primary Branding Color</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_primary || '#0f172a'}
+                                onChange={(e) => handleThemeCustomizerChange('color_primary', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_primary || '#0f172a'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_primary', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Secondary Action Color</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_secondary || '#3b82f6'}
+                                onChange={(e) => handleThemeCustomizerChange('color_secondary', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_secondary || '#3b82f6'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_secondary', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Accent Highlight Color</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_accent || '#f59e0b'}
+                                onChange={(e) => handleThemeCustomizerChange('color_accent', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_accent || '#f59e0b'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_accent', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Background (Light Mode)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_bg_light || '#ffffff'}
+                                onChange={(e) => handleThemeCustomizerChange('color_bg_light', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_bg_light || '#ffffff'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_bg_light', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Background (Dark Mode)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_bg_dark || '#0f172a'}
+                                onChange={(e) => handleThemeCustomizerChange('color_bg_dark', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_bg_dark || '#0f172a'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_bg_dark', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Body Text (Light Mode)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_text_light || '#1e293b'}
+                                onChange={(e) => handleThemeCustomizerChange('color_text_light', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_text_light || '#1e293b'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_text_light', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Body Text (Dark Mode)</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={themeCustomizer.color_text_dark || '#f8fafc'}
+                                onChange={(e) => handleThemeCustomizerChange('color_text_dark', e.target.value)}
+                                style={{ width: '40px', height: '40px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              />
+                              <input 
+                                type="text" 
+                                value={themeCustomizer.color_text_dark || '#f8fafc'} 
+                                onChange={(e) => handleThemeCustomizerChange('color_text_dark', e.target.value)}
+                                className="form-control"
+                                style={{ flexGrow: 1 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Global Border Radius: <strong>{themeCustomizer.border_radius || 8}px</strong></label>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="24" 
+                            value={themeCustomizer.border_radius || 8} 
+                            onChange={(e) => handleThemeCustomizerChange('border_radius', parseInt(e.target.value) || 0)}
+                            style={{ width: '100%', accentColor: 'var(--primary)' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUB-TAB 8: SEO & VISIBILITY */}
+                    {cmsSubTab === 'seo' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          SEO Optimization & Open Graph Parameters
+                        </h4>
+
+                        <div className="form-group">
+                          <label className="form-label">Open Graph (Social Share) Title</label>
+                          <input 
+                            type="text" 
+                            value={seoVisibility.og_title || ''} 
+                            onChange={(e) => handleSeoVisibilityChange('og_title', e.target.value)}
+                            className="form-control"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Open Graph Description</label>
+                          <textarea 
+                            value={seoVisibility.og_description || ''} 
+                            onChange={(e) => handleSeoVisibilityChange('og_description', e.target.value)}
+                            className="form-control"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Open Graph Preview Image URL</label>
+                          <input 
+                            type="text" 
+                            value={seoVisibility.og_image || ''} 
+                            onChange={(e) => handleSeoVisibilityChange('og_image', e.target.value)}
+                            className="form-control"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Robots.txt Content Rules</label>
+                          <textarea 
+                            value={seoVisibility.robots_txt || 'User-agent: *\nDisallow: /api/\nAllow: /'} 
+                            onChange={(e) => handleSeoVisibilityChange('robots_txt', e.target.value)}
+                            className="form-control"
+                            rows={3}
+                            style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Google Structured Schema Markup (JSON-LD)</label>
+                          <textarea 
+                            value={seoVisibility.company_schema || ''} 
+                            onChange={(e) => handleSeoVisibilityChange('company_schema', e.target.value)}
+                            className="form-control"
+                            rows={6}
+                            style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                            placeholder="Place Google Local Business schema JSON here..."
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '30px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                       <button type="submit" className="btn btn-primary" style={{ padding: '12px 32px' }}>
-                        Save and Publish Changes
+                        Publish CMS Settings
                       </button>
                     </div>
                   </form>

@@ -99,6 +99,65 @@ switch ($method) {
                 $stmt = $pdo->prepare("INSERT INTO `applications` (`job_id`, `applicant_name`, `applicant_email`, `applicant_phone`, `cv_url`, `message`) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$job_id, $name, $email, $phone, $destination, $message]);
                 
+                // Get job title for email notification
+                $job_title = "Unknown Position";
+                try {
+                    $jstmt = $pdo->prepare("SELECT `title` FROM `careers` WHERE `id` = ?");
+                    $jstmt->execute([$job_id]);
+                    $job = $jstmt->fetch(PDO::FETCH_ASSOC);
+                    if ($job) {
+                        $job_title = $job['title'];
+                    }
+                } catch (Exception $e) {
+                    // Suppress and use fallback
+                }
+
+                // Email dispatch to brainfeelstech@gmail.com
+                $to = "brainfeelstech@gmail.com";
+                $email_subject = "New Job Application: " . $job_title;
+                $headers = "MIME-Version: 1.0\r\n";
+                $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                $headers .= "From: no-reply@brainfeelstech.com\r\n";
+                $headers .= "Reply-To: " . $email . "\r\n";
+                
+                $email_body = "
+                <html>
+                <head>
+                    <title>New Job Application Received</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { padding: 20px; border: 1px solid #eee; border-radius: 5px; max-width: 600px; }
+                        .header { background-color: #0f172a; color: white; padding: 15px; text-align: center; border-radius: 5px 5px 0 0; }
+                        .content { padding: 20px; }
+                        .field { margin-bottom: 10px; }
+                        .label { font-weight: bold; color: #475569; }
+                        .value { margin-left: 10px; }
+                        .message-box { background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin-top: 15px; }
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <div class='header'>
+                            <h2>Brainfeels Tech - New Job Application</h2>
+                        </div>
+                        <div class='content'>
+                            <div class='field'><span class='label'>Job Title:</span><span class='value'>" . htmlspecialchars($job_title) . "</span></div>
+                            <div class='field'><span class='label'>Applicant Name:</span><span class='value'>" . htmlspecialchars($name) . "</span></div>
+                            <div class='field'><span class='label'>Email:</span><span class='value'>" . htmlspecialchars($email) . "</span></div>
+                            <div class='field'><span class='label'>Phone:</span><span class='value'>" . htmlspecialchars($phone) . "</span></div>
+                            <div class='field'><span class='label'>Resume File:</span><span class='value'>" . htmlspecialchars($fileName) . "</span></div>
+                            <div class='message-box'>
+                                <strong>Cover Letter / Message:</strong><br/>
+                                " . nl2br(htmlspecialchars($message)) . "
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                ";
+                
+                @mail($to, $email_subject, $email_body, $headers);
+                
                 echo json_encode([
                     "success" => true,
                     "message" => "Your application has been submitted successfully! Our HR team will reach out."
