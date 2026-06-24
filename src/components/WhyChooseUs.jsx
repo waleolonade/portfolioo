@@ -1,5 +1,4 @@
-import React from 'react';
-import { Shield, Sparkles, Cpu, BadgeCheck, Users, HelpCircle } from 'lucide-react';
+import { Shield, Sparkles, Cpu, BadgeCheck } from 'lucide-react';
 
 export default function WhyChooseUs({ cms = {} }) {
   const cards = [

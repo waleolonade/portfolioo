@@ -304,6 +304,25 @@ try {
         $settingInsert->execute([$key, $val]);
     }
     }
+
+    // === Always ensure new tables exist (non-destructive) ===
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `cms_media` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `filename` VARCHAR(255) NOT NULL,
+        `original_name` VARCHAR(255) NOT NULL,
+        `url` VARCHAR(500) NOT NULL,
+        `mime_type` VARCHAR(100) NOT NULL,
+        `file_size` INT NOT NULL DEFAULT 0,
+        `folder` VARCHAR(100) NOT NULL DEFAULT 'general',
+        `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `cms_revisions` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `revision_data` LONGTEXT NOT NULL,
+        `description` VARCHAR(255) NOT NULL DEFAULT 'Auto-save',
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(["error" => "Database connection/initialization failed: " . $e->getMessage()]);

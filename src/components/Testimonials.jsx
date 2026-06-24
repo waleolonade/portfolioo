@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Quote, Star } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -7,16 +7,30 @@ export default function Testimonials({ cms = {} }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/testimonials.php`)
-      .then(res => res.json())
-      .then(data => {
-        setTestimonials(data || []);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to load testimonials', err);
-        setLoading(false);
-      });
+    const loadTestimonials = () => {
+      fetch(`${API_BASE_URL}/testimonials.php`)
+        .then(res => res.json())
+        .then(data => {
+          setTestimonials(data || []);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Failed to load testimonials', err);
+          setLoading(false);
+        });
+    };
+
+    loadTestimonials();
+
+    const handleMessage = (e) => {
+      if (e.data && (e.data.type === 'TESTIMONIALS_UPDATED' || e.data.type === 'CMS_LIVE_PREVIEW')) {
+        loadTestimonials();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   if (loading) return null; // Simple load hide, or keep subtle placeholder

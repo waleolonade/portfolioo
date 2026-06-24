@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { 
-  FolderOpen, DollarSign, Download, MessageSquare, Send, CheckCircle, 
-  Clock, FileText, ArrowUpRight 
+  FolderOpen, DollarSign, Download, MessageSquare, Send, 
+  FileText 
 } from 'lucide-react';
 
 export default function ClientPortal() {

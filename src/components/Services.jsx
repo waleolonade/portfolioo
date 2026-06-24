@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Code, Smartphone, Compass, Zap, ShoppingCart, Terminal, Server, HeartHandshake, HelpCircle, ArrowRight 

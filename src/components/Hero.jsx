@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Zap, Users, Award, Rocket, ChevronDown } from 'lucide-react';
-import { API_BASE_URL } from '../config';
 
 /* ─── Animated Counter Hook ─── */
 function useCountUp(target, duration = 2000, startOnMount = true) {
@@ -31,7 +30,7 @@ function useCountUp(target, duration = 2000, startOnMount = true) {
     return () => observer.disconnect();
   }, [target, duration, startOnMount]);
 
-  return { count, ref };
+  return [count, ref];
 }
 
 /* ─── Typing Animation Hook ─── */
@@ -58,8 +57,10 @@ function useTypingEffect(phrases, typingSpeed = 80, pauseTime = 2000) {
         setCharIndex(charIndex - 1);
       }, typingSpeed / 2);
     } else if (isDeleting && charIndex === 0) {
-      setIsDeleting(false);
-      setPhraseIndex((phraseIndex + 1) % phrases.length);
+      timeout = setTimeout(() => {
+        setIsDeleting(false);
+        setPhraseIndex((phraseIndex + 1) % phrases.length);
+      }, 300);
     }
 
     return () => clearTimeout(timeout);
@@ -172,9 +173,9 @@ export default function Hero({ cms = {} }) {
 
   const typedText = useTypingEffect(typingPhrases, 70, 1800);
 
-  const stat1 = useCountUp(20, 2000);
-  const stat2 = useCountUp(180, 2200);
-  const stat3 = useCountUp(8, 1800);
+  const [count1, ref1] = useCountUp(20, 2000);
+  const [count2, ref2] = useCountUp(180, 2200);
+  const [count3, ref3] = useCountUp(8, 1800);
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -213,7 +214,7 @@ export default function Hero({ cms = {} }) {
             </p>
 
             <p className="hero-description">
-              {cms.home_hero_subtitle || 'Professional Website Development, Mobile App Development, UI/UX Design, Backend APIs, Networking & IT Solutions — tailored for businesses that demand quality.'}
+              {cms.home_hero_subtitle || 'Professional Website Development, Mobile App Development, UI/UX Design, Backend APIs, Networking & IT Solutions tailored for businesses that demand quality.'}
             </p>
 
             {/* CTAs */}
@@ -274,25 +275,25 @@ export default function Hero({ cms = {} }) {
         </div>
 
         {/* ─── Statistics Counter Row ─── */}
-        <div className="hero-stats-grid" ref={stat1.ref}>
+        <div className="hero-stats-grid" ref={ref1}>
           <div className="hero-stat-item">
             <div className="hero-stat-icon"><Users size={20} /></div>
             <div>
-              <strong className="hero-stat-value">{stat1.count}+</strong>
+              <strong className="hero-stat-value">{count1}+</strong>
               <span className="hero-stat-label">Happy Clients</span>
             </div>
           </div>
-          <div className="hero-stat-item" ref={stat2.ref}>
+          <div className="hero-stat-item" ref={ref2}>
             <div className="hero-stat-icon"><Zap size={20} /></div>
             <div>
-              <strong className="hero-stat-value">{stat2.count}+</strong>
+              <strong className="hero-stat-value">{count2}+</strong>
               <span className="hero-stat-label">Deployments</span>
             </div>
           </div>
-          <div className="hero-stat-item" ref={stat3.ref}>
+          <div className="hero-stat-item" ref={ref3}>
             <div className="hero-stat-icon"><Award size={20} /></div>
             <div>
-              <strong className="hero-stat-value">{stat3.count}+</strong>
+              <strong className="hero-stat-value">{count3}+</strong>
               <span className="hero-stat-label">Years Experience</span>
             </div>
           </div>
@@ -400,6 +401,8 @@ export default function Hero({ cms = {} }) {
           max-width: 560px;
           margin-bottom: 32px;
           animation: fadeInUp 0.9s ease-out;
+          text-align: justify;
+          text-justify: inter-word;
         }
         .hero-cta-primary {
           padding: 14px 30px !important;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Layout, Server, Database, Settings } from 'lucide-react';
 
 export default function TechStack({ cms = {} }) {

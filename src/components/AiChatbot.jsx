@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Sparkles, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { MessageSquare, X, Send, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function AiChatbot() {
@@ -31,7 +31,7 @@ export default function AiChatbot() {
     setInput('');
 
     setTimeout(() => {
-      let replyText = '';
+      let replyText;
       const textLower = textToSend.toLowerCase();
 
       if (awaitingEmail) {

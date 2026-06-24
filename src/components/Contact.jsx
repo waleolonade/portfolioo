@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Mail, MapPin, Phone, Send, CheckCircle, AlertCircle, Calendar, 
-  Clock, DollarSign, Settings, Calculator, MessageCircle 
+  Calculator, MessageCircle 
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -16,7 +16,6 @@ export default function Contact({ cms = {} }) {
     name: '', email: '', company: '', project_type: 'Website Development',
     budget: '$5,000 - $10,000', timeline: '1 - 3 months', message: ''
   });
-  const [estimate, setEstimate] = useState(0);
 
   // Tab 3: Booking Form State
   const [bookingForm, setBookingForm] = useState({
@@ -26,8 +25,8 @@ export default function Contact({ cms = {} }) {
 
   const [status, setStatus] = useState({ submitting: false, success: null, error: null });
 
-  // Update Quote Estimate calculation on the fly
-  useEffect(() => {
+  // Derive Quote Estimate calculation on the fly
+  const estimate = (() => {
     let base = 1200;
     if (quoteForm.project_type === 'Mobile App Development') base = 3500;
     if (quoteForm.project_type === 'UI/UX Design') base = 600;
@@ -41,8 +40,8 @@ export default function Contact({ cms = {} }) {
     if (quoteForm.timeline === 'Immediate') multiplier = 1.25;
     if (quoteForm.timeline === '3 - 6 months') multiplier = 0.9;
 
-    setEstimate(Math.round(base * multiplier));
-  }, [quoteForm.project_type, quoteForm.timeline]);
+    return Math.round(base * multiplier);
+  })();
 
   const handleMsgChange = (e) => {
     const { name, value } = e.target;

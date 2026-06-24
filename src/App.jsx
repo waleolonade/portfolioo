@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { CmsContext } from './CmsContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import TrustedBy from './components/TrustedBy';
 import QuickIntro from './components/QuickIntro';
 import Services from './components/Services';
 import Projects from './components/Projects';
-import GithubShowcase from './components/GithubShowcase';
+
 import TechStack from './components/TechStack';
 import WhyChooseUs from './components/WhyChooseUs';
 import Testimonials from './components/Testimonials';
@@ -23,13 +24,19 @@ import About from './pages/About';
 import ServicesPage from './pages/ServicesPage';
 import PortfolioPage from './pages/PortfolioPage';
 import ProjectDetails from './pages/ProjectDetails';
-import CareersPage from './pages/CareersPage';
 import ClientPortal from './pages/ClientPortal';
 
-// Admin
+// Admin Pages
 import Login from './admin/Login';
-import Dashboard from './admin/Dashboard';
-import './App.css';
+import AdminLayout from './admin/AdminLayout';
+import { AdminProvider } from './admin/AdminProvider';
+import Overview from './admin/pages/Overview';
+import ProjectsAdmin from './admin/pages/ProjectsAdmin';
+import ServicesAdmin from './admin/pages/ServicesAdmin';
+import LeadsAdmin from './admin/pages/LeadsAdmin';
+import CareersAdmin from './admin/pages/CareersAdmin';
+import PageBuilderCms from './admin/pages/PageBuilderCms';
+
 
 const SECTION_COMPONENTS = {
   hero: Hero,
@@ -37,7 +44,7 @@ const SECTION_COMPONENTS = {
   intro: QuickIntro,
   services: Services,
   projects: Projects,
-  github: GithubShowcase,
+
   tech_stack: TechStack,
   why_us: WhyChooseUs,
   process: Process,
@@ -52,7 +59,7 @@ const DEFAULT_LAYOUT = [
   { id: 'intro', visible: true },
   { id: 'services', visible: true },
   { id: 'projects', visible: true },
-  { id: 'github', visible: true },
+
   { id: 'tech_stack', visible: true },
   { id: 'why_us', visible: true },
   { id: 'process', visible: true },
@@ -61,41 +68,160 @@ const DEFAULT_LAYOUT = [
   { id: 'contact', visible: true }
 ];
 
-export const CmsContext = React.createContext({ cms: {}, reloadCms: () => {} });
+// CmsContext is imported from ./CmsContext at the top
 
-// Public Landing Page Component in exact requested flow order
-function LandingPage() {
-  const { cms } = React.useContext(CmsContext);
-  const [layout, setLayout] = useState(DEFAULT_LAYOUT);
+/* ═══════════════ Custom HTML Section Renderer ═══════════════ */
+function CustomHtmlSection({ section }) {
+  const ref = React.useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    // Inject CSS
+    const styleId = `custom-css-${section.id}`;
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = styleId; document.head.appendChild(styleEl); }
+    styleEl.innerHTML = section.css_content || '';
+    // Inject JS
+    if (section.js_content) {
+      try { new Function(section.js_content)(); } catch(e) { console.error('Custom section JS error:', e); }
+    }
+    return () => { document.getElementById(styleId)?.remove(); };
+  }, [section.css_content, section.js_content, section.id]);
+
+  return <div ref={ref} dangerouslySetInnerHTML={{ __html: section.html_content || '' }} />;
+}
+
+/* ═══════════════ Animated Section Wrapper ═══════════════ */
+function AnimatedSection({ section, children }) {
+  const ref = React.useRef(null);
+  const s = section.settings || {};
+  const anim = s.animation || 'none';
+  const [visible, setVisible] = useState(anim === 'none');
+  const [prevAnim, setPrevAnim] = useState(anim);
+
+  if (anim !== prevAnim) {
+    setPrevAnim(anim);
+    setVisible(anim === 'none');
+  }
 
   useEffect(() => {
+    if (anim === 'none') return;
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
+    }, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [anim]);
+
+  const animStyles = {
+    'fade-in': { opacity: visible ? 1 : 0, transition: 'opacity 0.8s ease' },
+    'slide-up': { opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(40px)', transition: 'opacity 0.7s ease, transform 0.7s ease' },
+    'slide-left': { opacity: visible ? 1 : 0, transform: visible ? 'translateX(0)' : 'translateX(40px)', transition: 'opacity 0.7s ease, transform 0.7s ease' },
+    'zoom-in': { opacity: visible ? 1 : 0, transform: visible ? 'scale(1)' : 'scale(0.92)', transition: 'opacity 0.6s ease, transform 0.6s ease' }
+  };
+
+  const wrapperStyle = {
+    ...(anim !== 'none' ? animStyles[anim] || {} : {}),
+    paddingTop: s.padding_top != null ? s.padding_top : undefined,
+    paddingBottom: s.padding_bottom != null ? s.padding_bottom : undefined,
+    maxWidth: s.max_width === 'contained' ? 1200 : s.max_width === 'narrow' ? 800 : undefined,
+    marginLeft: (s.max_width === 'contained' || s.max_width === 'narrow') ? 'auto' : undefined,
+    marginRight: (s.max_width === 'contained' || s.max_width === 'narrow') ? 'auto' : undefined,
+    position: 'relative'
+  };
+
+  const bgStyle = {};
+  if (s.bg_color) bgStyle.backgroundColor = s.bg_color;
+  if (s.bg_image) {
+    bgStyle.backgroundImage = `url(${s.bg_image})`;
+    bgStyle.backgroundSize = 'cover'; bgStyle.backgroundPosition = 'center';
+  }
+
+  return (
+    <div ref={ref} className={s.custom_css_class || ''} style={bgStyle}>
+      {s.bg_overlay > 0 && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${s.bg_overlay})`, pointerEvents: 'none' }} />}
+      {s.custom_css && <style>{s.custom_css}</style>}
+      <div style={wrapperStyle}>{children}</div>
+    </div>
+  );
+}
+
+function LandingPage() {
+  const { cms } = React.useContext(CmsContext);
+
+  const layout = React.useMemo(() => {
     if (cms && cms.homepage_layout) {
       try {
         const parsed = JSON.parse(cms.homepage_layout);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setLayout(parsed);
+          return parsed.map(s => ({
+            ...s, type: s.type || 'builtin', settings: s.settings || {}
+          }));
         }
-      } catch (e) {
-        console.error('Failed to parse layout configuration', e);
+      } catch (err) {
+        console.error('Failed to parse layout configuration', err);
       }
     }
+    return DEFAULT_LAYOUT;
   }, [cms]);
 
+  const themeObj = React.useMemo(() => {
+    if (!cms.cms_theme_customizer) return {};
+    try {
+      return typeof cms.cms_theme_customizer === 'string' 
+        ? JSON.parse(cms.cms_theme_customizer) 
+        : cms.cms_theme_customizer;
+    } catch {
+      return {};
+    }
+  }, [cms.cms_theme_customizer]);
+  const themeClass = themeObj.theme_class || 'theme-quantum';
+
+  // Check visibility scheduling
+  const isSectionVisible = (section) => {
+    if (!section.visible) return false;
+    const s = section.settings || {};
+    const now = new Date();
+    if (s.schedule_start && new Date(s.schedule_start) > now) return false;
+    if (s.schedule_end && new Date(s.schedule_end) < now) return false;
+    return true;
+  };
+
   return (
-    <div className="page-container">
+    <div className={`page-container ${themeClass}`}>
       <Navbar cms={cms} />
       <main style={{ flexGrow: 1 }}>
-        {layout.map((section) => {
-          if (!section.visible) return null;
-          const Component = SECTION_COMPONENTS[section.id];
-          return Component ? <Component key={section.id} cms={cms} /> : null;
+        {layout.map((section, idx) => {
+          if (!isSectionVisible(section)) return null;
+          
+          // Built-in component
+          if (section.type === 'builtin' || !section.type) {
+            const Component = SECTION_COMPONENTS[section.id];
+            if (!Component) return null;
+            return (
+              <AnimatedSection key={section.id + idx} section={section}>
+                <Component cms={cms} />
+              </AnimatedSection>
+            );
+          }
+          
+          // Custom HTML section
+          if (section.type === 'custom_html') {
+            return (
+              <AnimatedSection key={section.id + idx} section={section}>
+                <CustomHtmlSection section={section} />
+              </AnimatedSection>
+            );
+          }
+          
+          return null;
         })}
       </main>
       <Footer cms={cms} />
     </div>
   );
 }
-
 function App() {
   const [cms, setCms] = useState({});
 
@@ -114,6 +240,18 @@ function App() {
     reloadCms();
   }, []);
 
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'CMS_LIVE_PREVIEW') {
+        setCms(event.data.cms);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
   // Update dynamic page head details, schema markup, theme variables, and fonts
   useEffect(() => {
     if (!cms || Object.keys(cms).length === 0) return;
@@ -125,7 +263,7 @@ function App() {
         return typeof cms.cms_theme_customizer === 'string' 
           ? JSON.parse(cms.cms_theme_customizer) 
           : cms.cms_theme_customizer;
-      } catch(e) {
+      } catch {
         return {};
       }
     })();
@@ -187,7 +325,7 @@ function App() {
         return typeof cms.cms_brand_assets === 'string' 
           ? JSON.parse(cms.cms_brand_assets) 
           : cms.cms_brand_assets;
-      } catch(e) {
+      } catch {
         return {};
       }
     })();
@@ -198,7 +336,7 @@ function App() {
         return typeof cms.cms_seo_visibility === 'string' 
           ? JSON.parse(cms.cms_seo_visibility) 
           : cms.cms_seo_visibility;
-      } catch(e) {
+      } catch {
         return {};
       }
     })();
@@ -264,6 +402,42 @@ function App() {
       document.head.appendChild(schemaScript);
     }
     schemaScript.textContent = seoVisibility.company_schema || '';
+
+    // 3. Custom Code Injection (from Developer IDE in CMS)
+    const customCodeObj = (() => {
+      if (!cms.cms_custom_code) return {};
+      try {
+        return typeof cms.cms_custom_code === 'string' ? JSON.parse(cms.cms_custom_code) : cms.cms_custom_code;
+      } catch { return {}; }
+    })();
+
+    // Inject custom CSS
+    const customCssId = 'cms-custom-css';
+    let customCssEl = document.getElementById(customCssId);
+    if (!customCssEl) { customCssEl = document.createElement('style'); customCssEl.id = customCssId; document.head.appendChild(customCssEl); }
+    customCssEl.innerHTML = customCodeObj.custom_css || '';
+
+    // Inject custom JS (recreate each time to re-execute)
+    const customJsId = 'cms-custom-js';
+    let existingJs = document.getElementById(customJsId);
+    if (existingJs) existingJs.remove();
+    if (customCodeObj.custom_js) {
+      const jsEl = document.createElement('script');
+      jsEl.id = customJsId;
+      jsEl.textContent = customCodeObj.custom_js;
+      document.head.appendChild(jsEl);
+    }
+
+    // Inject custom head HTML
+    const customHtmlId = 'cms-custom-head-html';
+    let existingHtml = document.getElementById(customHtmlId);
+    if (existingHtml) existingHtml.remove();
+    if (customCodeObj.custom_head_html) {
+      const htmlWrapper = document.createElement('div');
+      htmlWrapper.id = customHtmlId;
+      htmlWrapper.innerHTML = customCodeObj.custom_head_html;
+      document.head.appendChild(htmlWrapper);
+    }
   }, [cms]);
 
   return (
@@ -276,12 +450,19 @@ function App() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/portfolio/:id" element={<ProjectDetails />} />
-          <Route path="/careers" element={<CareersPage />} />
           <Route path="/portal" element={<ClientPortal />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/admin/cms" element={<AdminProvider><PageBuilderCms /></AdminProvider>} />
+          <Route path="/admin" element={<AdminProvider><AdminLayout /></AdminProvider>}>
+            <Route index element={<Overview />} />
+            <Route path="overview" element={<Overview />} />
+            <Route path="projects" element={<ProjectsAdmin />} />
+            <Route path="services" element={<ServicesAdmin />} />
+            <Route path="leads" element={<LeadsAdmin />} />
+            <Route path="careers" element={<CareersAdmin />} />
+          </Route>
           
           {/* Catch-all redirect to Landing */}
           <Route path="*" element={<LandingPage />} />

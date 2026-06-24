@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
-import { CmsContext } from '../App';
+import { CmsContext } from '../CmsContext';
 
 const GithubIcon = ({ size = 20 }) => (
   <svg 
@@ -86,14 +86,62 @@ export default function Footer({ cms = {} }) {
   const contextCms = useContext(CmsContext) || {};
   const activeCms = (cms && Object.keys(cms).length > 0) ? cms : (contextCms.cms || {});
 
-  const logoText = activeCms.site_logo_text || 'Brainfeels Tech';
+  const brandAssets = (() => {
+    try {
+      return typeof activeCms.cms_brand_assets === 'string' ? JSON.parse(activeCms.cms_brand_assets) : activeCms.cms_brand_assets || {};
+    } catch { return {}; }
+  })();
+
+  const footerLogoData = (() => {
+    try {
+      return typeof activeCms.cms_footer_logo === 'string' ? JSON.parse(activeCms.cms_footer_logo) : activeCms.cms_footer_logo || {};
+    } catch { return {}; }
+  })();
+
+  const logoText = brandAssets.logo_text || activeCms.site_logo_text || 'Brainfeels Tech';
+  const logoIcon = logoText.charAt(0);
+
+  const renderFooterLogo = () => {
+    const isDark = true;
+    const fallbackLogo = isDark ? (brandAssets.logo_url_dark || brandAssets.logo_url_light) : brandAssets.logo_url_light;
+    const logoSrc = footerLogoData.footer_logo_url || fallbackLogo;
+    const showImg = !!footerLogoData.footer_logo_url || brandAssets.logo_type === 'image' || brandAssets.logo_type === 'both';
+    const showText = brandAssets.logo_type === 'text' || brandAssets.logo_type === 'both' || !logoSrc;
+    const w = footerLogoData.footer_logo_width || brandAssets.logo_width || 140;
+    const h = footerLogoData.footer_logo_height || brandAssets.logo_height || 40;
+
+    return (
+      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+        {showImg && logoSrc && (
+          <img src={logoSrc} alt={logoText} style={{ width: w ? `${w}px` : 'auto', height: h ? `${h}px` : '40px', objectFit: 'contain' }} />
+        )}
+        {showText && (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {!(showImg && logoSrc) && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: 'white', fontSize: '0.85rem', fontWeight: 800, marginRight: '8px' }}>
+                {logoIcon}
+              </span>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}>
+                {logoText}
+              </span>
+              {brandAssets.show_tagline && brandAssets.tagline && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: '2px' }}>{brandAssets.tagline}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </Link>
+    );
+  };
 
   const footerBuilder = (() => {
     try {
       return typeof activeCms.cms_footer_builder === 'string'
         ? JSON.parse(activeCms.cms_footer_builder)
         : activeCms.cms_footer_builder || {};
-    } catch (e) {
+    } catch {
       return {};
     }
   })();
@@ -103,7 +151,7 @@ export default function Footer({ cms = {} }) {
       return typeof activeCms.cms_social_management === 'string'
         ? JSON.parse(activeCms.cms_social_management)
         : activeCms.cms_social_management || {};
-    } catch (e) {
+    } catch {
       return {};
     }
   })();
@@ -165,17 +213,7 @@ export default function Footer({ cms = {} }) {
           
           {/* Column 1: Brand details & Socials (Always visible) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <span style={{ 
-              fontWeight: 800, 
-              fontSize: '1.25rem', 
-              letterSpacing: '-0.02em', 
-              background: 'linear-gradient(135deg, var(--primary), var(--secondary))', 
-              WebkitBackgroundClip: 'text', 
-              WebkitTextFillColor: 'transparent',
-              display: 'block' 
-            }}>
-              {logoText}
-            </span>
+            {renderFooterLogo()}
             <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
               {activeCms.company_story || 'Brainfeels Tech helps businesses design, develop, and scale high-performance digital products and cloud-native solutions.'}
             </p>
@@ -227,7 +265,6 @@ export default function Footer({ cms = {} }) {
                 <li><Link to="/about" style={{ color: 'var(--text-muted)' }}>About Us</Link></li>
                 <li><Link to="/services" style={{ color: 'var(--text-muted)' }}>Services</Link></li>
                 <li><Link to="/portfolio" style={{ color: 'var(--text-muted)' }}>Case Studies</Link></li>
-                <li><Link to="/careers" style={{ color: 'var(--text-muted)' }}>Careers</Link></li>
                 <li><Link to="/portal" style={{ color: 'var(--text-muted)' }}>Client Portal</Link></li>
               </ul>
             </div>

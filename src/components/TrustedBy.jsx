@@ -1,5 +1,3 @@
-import React from 'react';
-
 const techs = [
   { name: 'React', color: '#61DAFB' },
   { name: 'React Native', color: '#61DAFB' },

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FileCode2, Layers, Palette, ShieldCheck, Cpu, Globe } from 'lucide-react';
 
 export default function QuickIntro({ cms = {} }) {
@@ -46,9 +45,9 @@ export default function QuickIntro({ cms = {} }) {
       <div className="container">
         <div className="qi-header">
           <span className="qi-eyebrow">{cms.home_intro_title || 'Who We Are'}</span>
-          <h2 className="qi-title">{cms.home_intro_subtitle || 'Transforming Ideas Into Scalable Digital Products'}</h2>
+          <h2 className="qi-title">{cms.home_intro_subtitle || 'Architecting the Future of Digital Innovation'}</h2>
           <p className="qi-subtitle">
-            {cms.home_intro_description || 'Brainfeels Tech is a multi-disciplinary software engineering agency. We design, deploy, and maintain high-performance digital products for businesses globally. By leveraging modern frameworks and strict cloud orchestration, we guarantee rapid delivery and seamless operational scaling.'}
+            {cms.home_intro_description || 'Brainfeels Tech is a premier software engineering agency dedicated to crafting high-performance, future-proof digital solutions. We partner with forward-thinking businesses globally to design, develop, and deploy enterprise-grade applications. By combining cutting-edge technology stacks with robust cloud infrastructure, we deliver secure, scalable, and seamless digital experiences that drive measurable business growth.'}
           </p>
         </div>
 
@@ -95,6 +94,8 @@ export default function QuickIntro({ cms = {} }) {
           font-size: 1.05rem;
           color: var(--text-secondary);
           line-height: 1.7;
+          text-align: justify;
+          text-justify: inter-word;
         }
         .qi-grid {
           display: grid;

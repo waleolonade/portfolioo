@@ -1,0 +1,20 @@
+RewriteEngine On
+RewriteBase /portfolioo/
+
+# 1. Allow the api directory to be accessed directly without rewriting
+RewriteCond %{REQUEST_URI} ^/portfolioo/api/ [NC]
+RewriteRule ^api/ - [L]
+
+# 2. Allow the dist directory to be accessed directly if referenced
+RewriteRule ^dist/ - [L]
+
+# 3. Explicitly rewrite index.html at root to dist/index.html
+RewriteRule ^index\.html$ dist/index.html [L]
+
+# 4. Rewrite root directory request to dist/index.html
+RewriteRule ^$ dist/index.html [L]
+
+# 5. For any other request that is not a real file/directory in the root, rewrite to dist/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ dist/$1 [L]

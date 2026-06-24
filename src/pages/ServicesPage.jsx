@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { Check, Info, HelpCircle, Code, ShieldCheck, Zap, Server } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function ServicesPage() {
@@ -35,29 +35,7 @@ export default function ServicesPage() {
     { title: '5. Production Orchestration', desc: 'Configure cloud VPC instances, setup sitemap indexes, and deploy via automated git CI/CD pipelines.' }
   ];
 
-  const pricingTiers = [
-    {
-      name: 'Startup MVP',
-      price: '$1,500',
-      period: 'flat fee',
-      desc: 'Perfect for validating new business concepts or deploying clean marketing websites.',
-      features: ['1 React Landing Page', 'Local Contact Form DB Store', 'Subdomain deployment support', 'Standard SSL certificates', '1 week support warranty']
-    },
-    {
-      name: 'Agile Scale',
-      price: '$4,000',
-      period: 'project basis',
-      desc: 'Our most popular plan for businesses wanting custom API connections or mobile assets.',
-      features: ['React Native Mobile App (Expo)', 'Up to 5 API Route Endpoints', 'Admin login credential access', 'Auto-email notification alerts', '30 days support warranty']
-    },
-    {
-      name: 'Enterprise core',
-      price: '$8,000+',
-      period: 'custom SLA',
-      desc: 'Full digital transformation with isolated cloud networks and secure databases.',
-      features: ['Custom Admin Dashboard', 'Unlimited SQL/NoSQL databases', 'Isolated AWS/GCP VPC networks', 'CI/CD automated pipelines', '1 year priority support SLA']
-    }
-  ];
+
 
   const faqs = [
     { q: 'How long does a standard web deployment take?', a: 'Simple MVPs are delivered within 2 weeks. Custom enterprise database applications typically take 4 to 8 weeks depending on integration parameters.' },
@@ -129,54 +107,7 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        {/* Pricing Tiers */}
-        <section className="container section">
-          <h2 className="section-title">Investment Options</h2>
-          <p className="section-subtitle">Straightforward rates with no hidden operational charges.</p>
-          
-          <div className="grid grid-3">
-            {pricingTiers.map((tier, idx) => (
-              <div key={idx} className="card" style={{ display: 'flex', flexDirection: 'column', border: idx === 1 ? '2px solid var(--primary)' : '1px solid var(--border)', position: 'relative' }}>
-                {idx === 1 && (
-                  <span style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--primary)', color: 'white', padding: '2px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    Recommended
-                  </span>
-                )}
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>{tier.name}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>{tier.desc}</p>
-                
-                <div style={{ marginBottom: '24px' }}>
-                  <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{tier.price}</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}> / {tier.period}</span>
-                </div>
-                
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', marginBottom: '30px', flexGrow: 1 }}>
-                  {tier.features.map((feat, fIdx) => (
-                    <li key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      <Check size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
 
-                <button 
-                  onClick={() => {
-                    const contactSection = document.getElementById('contact');
-                    if (contactSection) {
-                      contactSection.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      window.location.hash = '#/contact';
-                    }
-                  }} 
-                  className={`btn ${idx === 1 ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ width: '100%' }}
-                >
-                  Initiate Project
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* FAQ Accordion */}
         <section style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', padding: '60px 0' }}>

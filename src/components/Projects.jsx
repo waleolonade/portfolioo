@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Layers } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export default function Projects({ cms = {} }) {

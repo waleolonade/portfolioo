@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { MessageCircle, X } from 'lucide-react';
-import { CmsContext } from '../App';
+import { CmsContext } from '../CmsContext';
 
 export default function WhatsAppFloating() {
   const { cms } = useContext(CmsContext);
@@ -12,7 +12,7 @@ export default function WhatsAppFloating() {
       return typeof cms.cms_whatsapp_hub === 'string'
         ? JSON.parse(cms.cms_whatsapp_hub)
         : cms.cms_whatsapp_hub || {};
-    } catch (e) {
+    } catch {
       return {};
     }
   })();

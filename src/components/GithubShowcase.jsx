@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, GitFork, ExternalLink, Code2, BookOpen } from 'lucide-react';
-import { API_BASE_URL } from '../config';
 
 const GithubIcon = ({ size = 24, className = "", style = {} }) => (
   <svg 

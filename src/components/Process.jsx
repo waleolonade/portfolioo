@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Map, Layout, Code2, ShieldAlert, Rocket } from 'lucide-react';
 
 export default function Process({ cms = {} }) {

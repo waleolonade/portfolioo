@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, Lock, ArrowRight, UserCheck, Menu, X } from 'lucide-react';
-import { CmsContext } from '../App';
+import { CmsContext } from '../CmsContext';
 
 export default function Navbar({ cms = {} }) {
   const contextCms = useContext(CmsContext) || {};
@@ -18,7 +18,7 @@ export default function Navbar({ cms = {} }) {
       return typeof activeCms.cms_brand_assets === 'string'
         ? JSON.parse(activeCms.cms_brand_assets)
         : activeCms.cms_brand_assets || {};
-    } catch (e) {
+    } catch {
       return {};
     }
   })();
@@ -28,7 +28,7 @@ export default function Navbar({ cms = {} }) {
       return typeof activeCms.cms_header_builder === 'string'
         ? JSON.parse(activeCms.cms_header_builder)
         : activeCms.cms_header_builder || {};
-    } catch (e) {
+    } catch {
       return {};
     }
   })();
@@ -66,10 +66,11 @@ export default function Navbar({ cms = {} }) {
     const logoSrc = isDark ? (brandAssets.logo_url_dark || brandAssets.logo_url_light) : brandAssets.logo_url_light;
     const showImg = brandAssets.logo_type === 'image' || brandAssets.logo_type === 'both';
     const showText = brandAssets.logo_type === 'text' || brandAssets.logo_type === 'both' || !logoSrc;
+    const customTextColor = isDark ? brandAssets.logo_color_dark : brandAssets.logo_color_light;
 
     return (
-      <Link to="/" className="logo-text flex align-center" onClick={closeMenu}>
-        {showImg && logoSrc ? (
+      <Link to="/" className="logo-text flex align-center" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {showImg && logoSrc && (
           <img 
             src={logoSrc} 
             alt={logoText} 
@@ -79,20 +80,19 @@ export default function Navbar({ cms = {} }) {
               objectFit: 'contain'
             }} 
           />
-        ) : (
-          showText && (
-            <>
-              <span className="logo-icon">{logoIcon}</span>
-              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-                <span>{logoText}</span>
-                {brandAssets.show_tagline && brandAssets.tagline && (
-                  <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: '2px' }}>
-                    {brandAssets.tagline}
-                  </span>
-                )}
-              </div>
-            </>
-          )
+        )}
+        {showText && (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {!(showImg && logoSrc) && <span className="logo-icon">{logoIcon}</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+              <span style={customTextColor ? { color: customTextColor } : {}}>{logoText}</span>
+              {brandAssets.show_tagline && brandAssets.tagline && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: '2px' }}>
+                  {brandAssets.tagline}
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </Link>
     );
@@ -114,7 +114,6 @@ export default function Navbar({ cms = {} }) {
       <li><Link to="/about" className={`nav-link ${isActive('/about')}`} onClick={closeMenu}>About</Link></li>
       <li><Link to="/services" className={`nav-link ${isActive('/services')}`} onClick={closeMenu}>Services</Link></li>
       <li><Link to="/portfolio" className={`nav-link ${isActive('/portfolio')}`} onClick={closeMenu}>Portfolio</Link></li>
-      <li><Link to="/careers" className={`nav-link ${isActive('/careers')}`} onClick={closeMenu}>Careers</Link></li>
       <li>
         <Link to="/portal" className={`nav-link ${isActive('/portal')}`} onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <UserCheck size={14} /> Client Portal
