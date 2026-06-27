@@ -167,14 +167,14 @@ export default function Contact({ cms = {} }) {
           
           {/* Info Card column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Brainfeels HQ</h3>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{cms.contact_hq_name || 'Brainfeels HQ'}</h3>
             
             <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
               <div style={{ color: 'var(--primary)', padding: '8px', borderRadius: '6px', backgroundColor: 'rgba(var(--primary-rgb), 0.06)' }}>
                 <MapPin size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>HQ Location</h4>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{cms.contact_hq_title || 'HQ Location'}</h4>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                   {cms.contact_address || '100 Tech Hub Boulevard, Suite 400, San Francisco, CA 94107'}
                 </p>
@@ -186,7 +186,7 @@ export default function Contact({ cms = {} }) {
                 <Mail size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Email Support</h4>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{cms.contact_email_title || 'Email Support'}</h4>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                   {cms.contact_email || 'brainfeelstech@gmail.com'}
                 </p>
@@ -198,7 +198,7 @@ export default function Contact({ cms = {} }) {
                 <Phone size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Telephone</h4>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{cms.contact_phone_title || 'Telephone'}</h4>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                   {cms.contact_phone || '08061657738'}
                 </p>

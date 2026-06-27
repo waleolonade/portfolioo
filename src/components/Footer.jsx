@@ -336,7 +336,7 @@ export default function Footer({ cms = {} }) {
           {columnsCount >= 4 && (
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Contact HQ
+                {activeCms.contact_hq_name || 'Contact HQ'}
               </h4>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.9rem', padding: 0, marginBottom: isMapEnabled ? '16px' : '0' }}>
                 <li style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>

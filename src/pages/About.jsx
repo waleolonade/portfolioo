@@ -290,7 +290,7 @@ export default function About() {
               <p className="section-subtitle">We leverage modern, reliable, and standardized frameworks to guarantee product longevity.</p>
             </div>
 
-            <div className="grid grid-5" style={{ gap: '20px' }} className="grid-stack-responsive">
+            <div className="grid grid-5 grid-stack-responsive" style={{ gap: '20px' }}>
               <div className="stack-card">
                 <h4>Frontend</h4>
                 <div className="stack-pill">React.js</div>

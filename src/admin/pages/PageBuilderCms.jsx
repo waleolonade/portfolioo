@@ -8,7 +8,8 @@ import {
   Save, GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, Plus, Trash2,
   Upload, X, Terminal, Play, RotateCcw, Code, Image as ImageIcon,
   Copy, Settings, Undo2, Redo2, Monitor, Tablet, Smartphone, History,
-  Wand2, Search, FolderOpen, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
+  Wand2, Search, FolderOpen, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  MapPin
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════
@@ -495,7 +496,8 @@ export default function PageBuilderCms() {
     { id: 'theme', label: 'Theme Customizer', icon: <Palette size={15} /> },
     { id: 'testimonials', label: 'Testimonials Manager', icon: <MessageSquare size={15} /> },
     { id: 'code', label: 'Developer IDE', icon: <Terminal size={15} /> },
-    { id: 'seo', label: 'SEO & Visibility', icon: <Globe size={15} /> }
+    { id: 'seo', label: 'SEO & Visibility', icon: <Globe size={15} /> },
+    { id: 'hq_info', label: 'HQ & Contact Info', icon: <MapPin size={15} /> }
   ];
 
   const deviceWidths = { desktop: '100%', tablet: 768, mobile: 375 };
@@ -1053,6 +1055,100 @@ export default function PageBuilderCms() {
                       <div className="form-group" style={{ marginBottom: 12 }}><label className="form-label" style={{ fontSize: '.8rem' }}>Meta Description</label><textarea className="form-control" style={{ fontSize: '.8rem', padding: '8px 10px' }} rows={3} value={seoVisibility?.meta_description || ''} onChange={e => setSeoVisibility(p => ({ ...p, meta_description: e.target.value }))} /><small style={{ color: 'var(--text-muted)', fontSize: '.68rem' }}>150–160 characters.</small></div>
                       <ImageUploader label="OG Share Image" value={seoVisibility?.og_image || ''} onChange={v => setSeoVisibility(p => ({ ...p, og_image: v }))} hint="1200 × 630 px" onOpenLibrary={() => setMediaModal({ open: true, onSelect: v => setSeoVisibility(p => ({ ...p, og_image: v })) })} />
                       <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label" style={{ fontSize: '.8rem' }}>Robots.txt</label><textarea className="form-control" style={{ fontSize: '.8rem', padding: '8px 10px', fontFamily: 'monospace' }} rows={3} value={seoVisibility?.robots_txt || ''} onChange={e => setSeoVisibility(p => ({ ...p, robots_txt: e.target.value }))} /></div>
+                    </div>
+                  )}
+
+                  {/* ════════════ HQ & CONTACT INFO ════════════ */}
+                  {tab.id === 'hq_info' && (
+                    <div className="fade-slide" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Company / HQ Name</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_hq_name || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_hq_name: e.target.value }))} 
+                          placeholder="e.g. Brainfeels HQ"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Location Title</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_hq_title || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_hq_title: e.target.value }))} 
+                          placeholder="e.g. HQ Location"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>HQ Location Address</label>
+                        <textarea 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          rows={3}
+                          value={cmsForm.contact_address || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_address: e.target.value }))} 
+                          placeholder="100 Tech Hub Boulevard, Suite 400, San Francisco, CA 94107"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Email Support Title</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_email_title || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_email_title: e.target.value }))} 
+                          placeholder="e.g. Email Support"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Email Address</label>
+                        <input 
+                          type="email" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_email || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_email: e.target.value }))} 
+                          placeholder="brainfeelstech@gmail.com"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Telephone Title</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_phone_title || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_phone_title: e.target.value }))} 
+                          placeholder="e.g. Telephone"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>Telephone Number</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.contact_phone || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, contact_phone: e.target.value }))} 
+                          placeholder="08061657738"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label className="form-label" style={{ fontSize: '.8rem' }}>WhatsApp Chat Link</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                          value={cmsForm.whatsapp_link || ''} 
+                          onChange={e => setCmsForm(prev => ({ ...prev, whatsapp_link: e.target.value }))} 
+                          placeholder="https://wa.me/2348061657738"
+                        />
+                      </div>
                     </div>
                   )}
 
