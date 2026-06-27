@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Zap, Users, Award, Rocket, ChevronDown } from 'lucide-react';
+import { ArrowRight, Award, ChevronDown, Rocket, Users, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 /* ─── Animated Counter Hook ─── */
 function useCountUp(target, duration = 2000, startOnMount = true) {
@@ -369,10 +369,7 @@ export default function Hero({ cms = {} }) {
           animation: fadeInUp 0.7s ease-out;
         }
         .hero-gradient-text {
-          background: linear-gradient(135deg, var(--primary), var(--secondary));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: var(--primary);
         }
         .hero-subline {
           font-size: 1.3rem;
@@ -561,7 +558,7 @@ export default function Hero({ cms = {} }) {
           width: 44px;
           height: 44px;
           border-radius: 12px;
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(20, 184, 166, 0.08));
+          background: rgba(99, 102, 241, 0.1);
           border: 1px solid rgba(99, 102, 241, 0.1);
           color: var(--primary);
           display: flex;

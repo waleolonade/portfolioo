@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react';
+import { ArrowRight, Lock, Menu, Moon, Sun, UserCheck, X } from 'lucide-react';
+import { useContext, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, Lock, ArrowRight, UserCheck, Menu, X } from 'lucide-react';
 import { CmsContext } from '../CmsContext';
 
 export default function Navbar({ cms = {} }) {
@@ -255,7 +255,7 @@ export default function Navbar({ cms = {} }) {
           width: 28px;
           height: 28px;
           border-radius: 8px;
-          background: linear-gradient(135deg, var(--primary), var(--secondary));
+          background: var(--primary);
           color: white;
           font-size: 0.85rem;
           font-weight: 800;

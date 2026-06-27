@@ -1,4 +1,4 @@
-import { Search, Map, Layout, Code2, ShieldAlert, Rocket } from 'lucide-react';
+import { Code2, Layout, Map, Rocket, Search, ShieldAlert } from 'lucide-react';
 
 export default function Process({ cms = {} }) {
   const steps = [
@@ -78,7 +78,7 @@ export default function Process({ cms = {} }) {
         .process-line {
           width: 2px;
           flex-grow: 1;
-          background: linear-gradient(to bottom, var(--border), transparent);
+          background: var(--border);
           min-height: 20px;
         }
         .process-card {

@@ -102,6 +102,51 @@ switch ($method) {
             
             @mail($to, $email_subject, $email_body, $headers);
             
+            // Client Auto-Responder Email
+            $client_to = $email;
+            $client_subject = "We received your request - Brainfeels Tech";
+            $client_headers = "MIME-Version: 1.0\r\n";
+            $client_headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $client_headers .= "From: Brainfeels Tech <no-reply@brainfeelstech.com>\r\n";
+            
+            $typeFormatted = ucfirst($type);
+            $client_email_body = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+                    .header { background: linear-gradient(135deg, #0f172a, #3b82f6); padding: 40px 20px; text-align: center; color: white; }
+                    .header h2 { margin: 0; font-size: 24px; font-weight: 800; }
+                    .content { padding: 40px 30px; line-height: 1.6; }
+                    .footer { background-color: #f8fafc; text-align: center; padding: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h2>Brainfeels Tech</h2>
+                    </div>
+                    <div class='content'>
+                        <p>Hi " . htmlspecialchars($name) . ",</p>
+                        <p>Thank you for reaching out to us. We have successfully received your <strong>" . $typeFormatted . "</strong> request.</p>
+                        <p>Our engineering team will review the details you provided and get back to you shortly, typically within 24 hours.</p>
+                        <p>If you have any urgent questions, feel free to reply directly to this email or chat with us on WhatsApp.</p>
+                        <br>
+                        <p>Best Regards,<br><strong>Brainfeels Tech Team</strong></p>
+                    </div>
+                    <div class='footer'>
+                        &copy; " . date('Y') . " Brainfeels Tech. All rights reserved.<br>
+                        Lagos, Nigeria
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
+            
+            @mail($client_to, $client_subject, $client_email_body, $client_headers);
+            
             echo json_encode([
                 "success" => true,
                 "message" => "Your message has been sent successfully. We will get back to you soon!"

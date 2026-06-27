@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Code, Smartphone, Compass, Zap, ShoppingCart, Terminal, Server, HeartHandshake, HelpCircle, ArrowRight 
+import {
+    ArrowRight,
+    Code,
+    Compass,
+    HeartHandshake, HelpCircle,
+    Server,
+    ShoppingCart,
+    Smartphone,
+    Terminal,
+    Zap
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 
 const iconMap = {
@@ -16,7 +24,7 @@ const iconMap = {
   HeartHandshake: <HeartHandshake size={24} />
 };
 
-// Gradient color pairs for each service card icon
+// Solid color for each service card icon
 const gradientColors = [
   ['#6366f1', '#818cf8'],
   ['#14b8a6', '#2dd4bf'],
@@ -93,13 +101,13 @@ export default function Services({ cms = {} }) {
               >
                 {/* Gradient glow on hover */}
                 <div className="service-card-glow" style={{
-                  background: `radial-gradient(circle at center, ${color1}15, transparent 70%)`,
+                  background: `${color1}15`,
                   opacity: isHovered ? 1 : 0
                 }} />
 
                 <div style={{ position: 'relative', zIndex: 1 }}>
                   <div className="service-icon-wrapper" style={{
-                    background: `linear-gradient(135deg, ${color1}18, ${color2}10)`,
+                    background: `${color1}18`,
                     border: `1px solid ${color1}25`,
                     color: color1
                   }}>

@@ -324,7 +324,7 @@ export default function PortfolioPage() {
         .portfolio-header {
           padding: 80px 0 60px 0;
           text-align: center;
-          background: radial-gradient(circle at top, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+          background: rgba(59, 130, 246, 0.03);
           border-bottom: 1px solid var(--border);
         }
         .header-title {

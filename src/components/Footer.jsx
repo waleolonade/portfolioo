@@ -1,7 +1,8 @@
-import { useContext } from 'react';
+import { Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 import { CmsContext } from '../CmsContext';
+import { API_BASE_URL } from '../config';
 
 const GithubIcon = ({ size = 20 }) => (
   <svg 
@@ -85,6 +86,34 @@ const renderSocialIcon = (name) => {
 export default function Footer({ cms = {} }) {
   const contextCms = useContext(CmsContext) || {};
   const activeCms = (cms && Object.keys(cms).length > 0) ? cms : (contextCms.cms || {});
+  
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState({ loading: false, message: '', type: '' });
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setStatus({ loading: true, message: '', type: '' });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/newsletter.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      if (res.ok && (data.success || res.status === 200)) {
+        setStatus({ loading: false, message: data.message || "Subscribed successfully!", type: 'success' });
+        if (data.success) setEmail('');
+      } else {
+        setStatus({ loading: false, message: data.message || 'Subscription failed.', type: 'error' });
+      }
+    } catch (err) {
+      setStatus({ loading: false, message: 'Network error. Please try again later.', type: 'error' });
+    }
+  };
 
   const brandAssets = (() => {
     try {
@@ -118,12 +147,12 @@ export default function Footer({ cms = {} }) {
         {showText && (
           <div style={{ display: 'flex', alignItems: 'center' }}>
             {!(showImg && logoSrc) && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: 'white', fontSize: '0.85rem', fontWeight: 800, marginRight: '8px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'var(--primary)', color: 'white', fontSize: '0.85rem', fontWeight: 800, marginRight: '8px' }}>
                 {logoIcon}
               </span>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-              <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', color: 'var(--primary)', display: 'block' }}>
                 {logoText}
               </span>
               {brandAssets.show_tagline && brandAssets.tagline && (
@@ -190,14 +219,31 @@ export default function Footer({ cms = {} }) {
                 Get the latest updates, articles and engineering resources.
               </p>
             </div>
-            <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: '8px', maxWidth: '400px', width: '100%' }}>
-              <input 
-                type="email" 
-                placeholder={footerBuilder.newsletter_placeholder || 'Enter your email address'} 
-                className="form-control"
-                style={{ flexGrow: 1 }}
-              />
-              <button className="btn btn-primary" type="submit">Subscribe</button>
+            <form onSubmit={handleSubscribe} style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={footerBuilder.newsletter_placeholder || 'Enter your email address'} 
+                  className="form-control"
+                  style={{ flexGrow: 1 }}
+                  required
+                  disabled={status.loading}
+                />
+                <button className="btn btn-primary" type="submit" disabled={status.loading}>
+                  {status.loading ? '...' : 'Subscribe'}
+                </button>
+              </div>
+              {status.message && (
+                <div style={{ 
+                  fontSize: '0.85rem', 
+                  color: status.type === 'success' ? 'var(--primary)' : 'var(--error)',
+                  marginTop: '4px'
+                }}>
+                  {status.message}
+                </div>
+              )}
             </form>
           </div>
         )}

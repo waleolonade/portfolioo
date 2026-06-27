@@ -70,7 +70,7 @@ export default function TrustedBy({ cms = {} }) {
           height: 1px;
           flex: 1;
           max-width: 120px;
-          background: linear-gradient(to right, transparent, var(--border), transparent);
+          background: var(--border);
         }
         .trusted-label {
           font-size: 0.78rem;
@@ -84,8 +84,8 @@ export default function TrustedBy({ cms = {} }) {
         /* Marquee */
         .marquee-wrapper {
           overflow: hidden;
-          mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-          -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+          mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
           margin-bottom: 28px;
         }
         .marquee-track {

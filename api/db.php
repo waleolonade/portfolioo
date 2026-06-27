@@ -306,6 +306,13 @@ try {
     }
 
     // === Always ensure new tables exist (non-destructive) ===
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `newsletter_subscribers` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `email` VARCHAR(255) NOT NULL UNIQUE,
+        `status` VARCHAR(50) DEFAULT 'active',
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS `cms_media` (
         `id` INT AUTO_INCREMENT PRIMARY KEY,
         `filename` VARCHAR(255) NOT NULL,

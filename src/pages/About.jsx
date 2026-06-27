@@ -468,7 +468,7 @@ export default function About() {
         .about-hero {
           padding: 80px 0 60px 0;
           text-align: center;
-          background: radial-gradient(circle at top, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+          background: rgba(59, 130, 246, 0.03);
           border-bottom: 1px solid var(--border);
         }
         .hero-title {
@@ -725,7 +725,7 @@ export default function About() {
           flex-shrink: 0;
         }
         .glass-cta-card {
-          background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.03) 0%, rgba(var(--secondary-rgb), 0.03) 100%);
+          background: rgba(var(--primary-rgb), 0.03);
           border: 1px solid var(--border);
           border-radius: 20px;
           padding: 50px 30px;
