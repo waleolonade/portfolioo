@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php';
+header("Content-Type: text/html; charset=UTF-8");
 
 // Verify token passed in query parameter (or header)
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
