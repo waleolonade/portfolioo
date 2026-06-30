@@ -554,6 +554,7 @@ export default function ClientPortal() {
                         <th>Issue Date</th>
                         <th>Billing Value</th>
                         <th>Payment Status</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -576,11 +577,22 @@ export default function ClientPortal() {
                                 {inv.status}
                               </span>
                             </td>
+                            <td>
+                              <a 
+                                href={`${API_BASE_URL}/download_receipt.php?invoice_id=${inv.id}&token=${token}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-outline"
+                                style={{ padding: '4px 10px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px', margin: 0 }}
+                              >
+                                <Download size={12} /> Receipt PDF
+                              </a>
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</td>
+                          <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</td>
                         </tr>
                       )}
                     </tbody>

@@ -1,6 +1,7 @@
 <?php
 require_once 'db.php';
 require_once 'auth_helper.php';
+require_once 'ai_brief_analyzer.php';
 
 // Verify token and get username
 $username = verify_admin_token();
@@ -109,8 +110,11 @@ try {
 
         if ($actionType === 'brief') {
             $briefDescription = "A brief document has been uploaded: " . $fileName;
-            $updateProjBrief = $pdo->prepare("UPDATE `client_projects` SET `brief_details` = ?, `description` = ? WHERE `client_id` = ?");
-            $updateProjBrief->execute([$briefDescription, $briefDescription, $clientId]);
+            $updateProjBrief = $pdo->prepare("UPDATE `client_projects` SET `description` = ? WHERE `client_id` = ?");
+            $updateProjBrief->execute([$briefDescription, $clientId]);
+            
+            // Invoke the advanced 15-year Prompt Architect brief analyzer
+            generate_brief_analysis($clientId, "Uploaded specifications file: " . $fileName . ". Analyze this document upload in the context of the client portal workspace.", $pdo);
         }
 
         // Re-calculate project progress

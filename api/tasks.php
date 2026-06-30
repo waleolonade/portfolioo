@@ -1,6 +1,7 @@
 <?php
 require_once 'db.php';
 require_once 'auth_helper.php';
+require_once 'ai_brief_analyzer.php';
 
 // Verify token and get username
 $username = verify_admin_token();
@@ -186,8 +187,11 @@ try {
         // Process dynamic brief, feedback, or payment status changes in database
         if ($task['action_type'] === 'brief' && isset($inputData['brief_text'])) {
             $briefText = trim($inputData['brief_text']);
-            $updateProjBrief = $pdo->prepare("UPDATE `client_projects` SET `brief_details` = ?, `description` = ? WHERE `client_id` = ?");
-            $updateProjBrief->execute([$briefText, $briefText, $clientOwnerId]);
+            $updateProjBrief = $pdo->prepare("UPDATE `client_projects` SET `description` = ? WHERE `client_id` = ?");
+            $updateProjBrief->execute([$briefText, $clientOwnerId]);
+            
+            // Invoke the advanced 15-year Prompt Architect brief analyzer
+            generate_brief_analysis($clientOwnerId, $briefText, $pdo);
         }
 
         if ($task['action_type'] === 'feedback' && isset($inputData['feedback_text'])) {
