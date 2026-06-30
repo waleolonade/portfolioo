@@ -21,8 +21,6 @@ if (empty($token)) {
 
 try {
     // Decode JWT or verify username
-    // Since auth_helper.php verify_admin_token uses the authorization header or throws,
-    // we can temporarily bind the token to HTTP header so that we can call verify_admin_token()!
     $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $token;
     require_once 'auth_helper.php';
     
@@ -82,6 +80,32 @@ try {
         $clientUsername = $ownerStmt->fetchColumn() ?: 'Client';
     }
 
+    // Fetch CMS brand settings from database dynamically
+    $settingsStmt = $pdo->query("SELECT `setting_key`, `setting_value` FROM `cms_settings`");
+    $cmsSettings = $settingsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    $companyName = isset($cmsSettings['site_logo_text']) ? $cmsSettings['site_logo_text'] : 'Brainfeels Tech';
+    $companyEmail = isset($cmsSettings['contact_email']) ? $cmsSettings['contact_email'] : 'billing@brainfeels.tech';
+    $companyPhone = isset($cmsSettings['contact_phone']) ? $cmsSettings['contact_phone'] : '08061657738';
+    $companyAddress = isset($cmsSettings['contact_address']) ? $cmsSettings['contact_address'] : 'Lagos, Nigeria';
+    
+    // Parse brand assets
+    $brandAssets = [];
+    if (isset($cmsSettings['cms_brand_assets'])) {
+        $brandAssets = json_decode($cmsSettings['cms_brand_assets'], true);
+    }
+    $tagline = isset($brandAssets['tagline']) ? $brandAssets['tagline'] : 'Next-Gen Digital Solutions Agency';
+    $logoText = isset($brandAssets['logo_text']) ? $brandAssets['logo_text'] : 'Brainfeels Tech';
+
+    // Parse theme color customizers
+    $themeSettings = [];
+    if (isset($cmsSettings['cms_theme_customizer'])) {
+        $themeSettings = json_decode($cmsSettings['cms_theme_customizer'], true);
+    }
+    $colorPrimary = isset($themeSettings['color_secondary']) ? $themeSettings['color_secondary'] : '#3b82f6';
+    $colorDark = isset($themeSettings['color_primary']) ? $themeSettings['color_primary'] : '#0f172a';
+    $colorAccent = isset($themeSettings['color_accent']) ? $themeSettings['color_accent'] : '#f59e0b';
+
     // Format invoice details
     $invoiceCode = htmlspecialchars($invoice['invoice_code']);
     $amount = floatval($invoice['amount']);
@@ -100,14 +124,14 @@ try {
     <title>Receipt_<?php echo $invoiceCode; ?></title>
     <style>
         :root {
-            --primary: #3b82f6;
-            --dark: #0f172a;
+            --primary: <?php echo $colorPrimary; ?>;
+            --dark: <?php echo $colorDark; ?>;
             --light: #f8fafc;
             --border: #e2e8f0;
             --text-dark: #334155;
             --text-light: #64748b;
             --success: #10b981;
-            --accent: #f59e0b;
+            --accent: <?php echo $colorAccent; ?>;
         }
 
         body {
@@ -338,12 +362,12 @@ try {
         <!-- Header -->
         <div class="header-section">
             <div class="logo-area">
-                <h1>Brainfeels<span>Tech</span></h1>
-                <p>Next-Gen Digital Solutions Agency</p>
+                <h1><?php echo htmlspecialchars($logoText); ?></h1>
+                <p><?php echo htmlspecialchars($tagline); ?></p>
                 <p style="font-size: 10px; font-weight: normal; margin-top: 8px;">
-                    12 Tech Boulevard, Suite 500<br>
-                    Silicon Valley, CA 94025<br>
-                    billing@brainfeels.tech
+                    <?php echo htmlspecialchars($companyAddress); ?><br>
+                    Phone: <?php echo htmlspecialchars($companyPhone); ?><br>
+                    Email: <?php echo htmlspecialchars($companyEmail); ?>
                 </p>
             </div>
             <div class="invoice-details">
@@ -420,8 +444,8 @@ try {
 
         <!-- Footer -->
         <div class="footer-note">
-            <p>Thank you for choosing Brainfeels Tech. We appreciate your business!</p>
-            <p style="color: var(--text-light); margin-top: 10px;">If you have any questions concerning this invoice, contact our billing department at billing@brainfeels.tech.</p>
+            <p>Thank you for choosing <?php echo htmlspecialchars($companyName); ?>. We appreciate your business!</p>
+            <p style="color: var(--text-light); margin-top: 10px;">If you have any questions concerning this invoice, contact our billing department at <?php echo htmlspecialchars($companyEmail); ?>.</p>
         </div>
     </div>
 
