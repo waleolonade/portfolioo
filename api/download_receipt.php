@@ -96,6 +96,12 @@ try {
     }
     $tagline = isset($brandAssets['tagline']) ? $brandAssets['tagline'] : 'Next-Gen Digital Solutions Agency';
     $logoText = isset($brandAssets['logo_text']) ? $brandAssets['logo_text'] : 'Brainfeels Tech';
+    
+    // Split and style 'Tech' with brand colors
+    $styledLogo = htmlspecialchars($logoText);
+    if (stripos($styledLogo, 'Tech') !== false) {
+        $styledLogo = str_ireplace('Tech', '<span>Tech</span>', $styledLogo);
+    }
 
     // Parse theme color customizers
     $themeSettings = [];
@@ -152,6 +158,31 @@ try {
             border-radius: 8px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
             background-color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 110px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 12px;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.04;
+            user-select: none;
+        }
+
+        .watermark-paid {
+            color: var(--success);
+        }
+
+        .watermark-pending {
+            color: var(--accent);
         }
 
         .header-section {
@@ -359,10 +390,15 @@ try {
     </div>
 
     <div class="invoice-container">
+        <!-- Watermark -->
+        <div class="watermark <?php echo $status === 'Paid' ? 'watermark-paid' : 'watermark-pending'; ?>">
+            <?php echo $status; ?>
+        </div>
+
         <!-- Header -->
         <div class="header-section">
             <div class="logo-area">
-                <h1><?php echo htmlspecialchars($logoText); ?></h1>
+                <h1><?php echo $styledLogo; ?></h1>
                 <p><?php echo htmlspecialchars($tagline); ?></p>
                 <p style="font-size: 10px; font-weight: normal; margin-top: 8px;">
                     <?php echo htmlspecialchars($companyAddress); ?><br>
