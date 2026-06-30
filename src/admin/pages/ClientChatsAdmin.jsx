@@ -229,7 +229,7 @@ export default function ClientChatsAdmin() {
   // Create new invoice record
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!newInvoiceCode || !newInvoiceAmount || !newInvoiceDueDate || !selectedClientId) return;
+    if (!newInvoiceAmount || !newInvoiceDueDate || !selectedClientId) return;
     try {
       const res = await fetch(`${API_BASE_URL}/tasks.php`, {
         method: 'POST',
@@ -240,7 +240,6 @@ export default function ClientChatsAdmin() {
         body: JSON.stringify({
           action: 'invoice_create',
           client_id: selectedClientId,
-          invoice_code: newInvoiceCode,
           amount: parseFloat(newInvoiceAmount),
           balance_due: parseFloat(newInvoiceBalance || 0),
           currency: newInvoiceCurrency,
@@ -842,7 +841,7 @@ export default function ClientChatsAdmin() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code</label>
-                            <input type="text" placeholder="e.g. INV-2026-102" value={newInvoiceCode} onChange={(e) => setNewInvoiceCode(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                            <input type="text" value="Auto-generated" className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem', backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'not-allowed' }} disabled />
                           </div>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due Date</label>

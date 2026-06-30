@@ -121,23 +121,37 @@ try {
         if ($action === 'invoice_create') {
             verify_user_role(['Project Manager', 'Super Admin'], $pdo);
             $clientId = intval($inputData['client_id']);
-            $code = trim($inputData['invoice_code']);
             $amount = floatval($inputData['amount']);
             $balance = floatval($inputData['balance_due']);
             $currency = isset($inputData['currency']) ? trim($inputData['currency']) : '$';
             $dueDate = trim($inputData['due_date']);
             $status = trim($inputData['status']);
 
-            if ($clientId <= 0 || empty($code) || $amount < 0) {
+            if ($clientId <= 0 || $amount < 0) {
                 http_response_code(400);
                 echo json_encode(["message" => "Invalid billing input details."]);
                 exit();
             }
 
+            // Auto-generate invoice code: INV-YYYY-NNN
+            $year = date('Y');
+            $codeQuery = $pdo->prepare("SELECT `invoice_code` FROM `client_invoices` WHERE `invoice_code` LIKE ? ORDER BY `id` DESC LIMIT 1");
+            $codeQuery->execute(["INV-{$year}-%"]);
+            $lastCode = $codeQuery->fetchColumn();
+
+            $nextNum = 1;
+            if ($lastCode) {
+                $parts = explode('-', $lastCode);
+                if (count($parts) === 3) {
+                    $nextNum = intval($parts[2]) + 1;
+                }
+            }
+            $code = "INV-" . $year . "-" . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
             $stmt = $pdo->prepare("INSERT INTO `client_invoices` (`client_id`, `invoice_code`, `amount`, `balance_due`, `currency`, `status`, `due_date`) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$clientId, $code, $amount, $balance, $currency, $status, $dueDate]);
             
-            echo json_encode(["success" => true, "message" => "Invoice generated successfully."]);
+            echo json_encode(["success" => true, "message" => "Invoice generated successfully.", "code" => $code]);
             exit();
         }
 
