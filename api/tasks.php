@@ -24,6 +24,12 @@ try {
     $method = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
 
     if ($method === 'GET') {
+        // Fetch receipt layout settings
+        $settingsStmt = $pdo->prepare("SELECT `setting_value` FROM `cms_settings` WHERE `setting_key` = 'receipt_settings' LIMIT 1");
+        $settingsStmt->execute();
+        $receiptSettingsJSON = $settingsStmt->fetchColumn() ?: '{"layout":["header","meta","items","summary","footer"],"show_watermark":true,"tax_rate":0,"payment_terms":"Due upon receipt","custom_notes":"Thank you for choosing Brainfeels Tech. We appreciate your business!","footer_contact":"If you have any questions concerning this invoice, contact our billing department at billing@brainfeels.tech."}';
+        $receiptSettings = json_decode($receiptSettingsJSON, true);
+
         if ($currentUserRole === 'Client') {
             // Fetch project details
             $projStmt = $pdo->prepare("SELECT * FROM `client_projects` WHERE `client_id` = ? LIMIT 1");
@@ -49,7 +55,8 @@ try {
                 "project" => $project,
                 "tasks" => $tasks,
                 "invoices" => $invoices,
-                "files" => $files
+                "files" => $files,
+                "receipt_settings" => $receiptSettings
             ]);
             exit();
         } else {
@@ -77,7 +84,8 @@ try {
                     "project" => $project,
                     "tasks" => $tasks,
                     "invoices" => $invoices,
-                    "files" => $files
+                    "files" => $files,
+                    "receipt_settings" => $receiptSettings
                 ]);
                 exit();
             } else {
@@ -88,8 +96,94 @@ try {
         }
     } elseif ($method === 'POST') {
         $inputData = json_decode(file_get_contents('php://input'), true);
-        
-        // Handle invoice toggle if invoice_id is supplied
+        $action = isset($inputData['action']) ? trim($inputData['action']) : '';
+
+        // 1. Admin Action: Save dynamic receipt structure layout
+        if ($action === 'save_receipt_settings') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $settingsData = isset($inputData['settings']) ? $inputData['settings'] : null;
+            
+            if (!$settingsData) {
+                http_response_code(400);
+                echo json_encode(["message" => "Settings configurations are required."]);
+                exit();
+            }
+
+            $settingsJSON = json_encode($settingsData);
+            $saveStmt = $pdo->prepare("INSERT INTO `cms_settings` (`setting_key`, `setting_value`) VALUES ('receipt_settings', ?) ON DUPLICATE KEY UPDATE `setting_value` = ?, `updated_at` = CURRENT_TIMESTAMP");
+            $saveStmt->execute([$settingsJSON, $settingsJSON]);
+            
+            echo json_encode(["success" => true, "message" => "Receipt structure layout updated successfully."]);
+            exit();
+        }
+
+        // 2. Admin Action: Create new invoice
+        if ($action === 'invoice_create') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $clientId = intval($inputData['client_id']);
+            $code = trim($inputData['invoice_code']);
+            $amount = floatval($inputData['amount']);
+            $balance = floatval($inputData['balance_due']);
+            $currency = isset($inputData['currency']) ? trim($inputData['currency']) : '$';
+            $dueDate = trim($inputData['due_date']);
+            $status = trim($inputData['status']);
+
+            if ($clientId <= 0 || empty($code) || $amount < 0) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid billing input details."]);
+                exit();
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO `client_invoices` (`client_id`, `invoice_code`, `amount`, `balance_due`, `currency`, `status`, `due_date`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$clientId, $code, $amount, $balance, $currency, $status, $dueDate]);
+            
+            echo json_encode(["success" => true, "message" => "Invoice generated successfully."]);
+            exit();
+        }
+
+        // 3. Admin Action: Edit / Update existing invoice
+        if ($action === 'invoice_update') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $invId = intval($inputData['invoice_id']);
+            $code = trim($inputData['invoice_code']);
+            $amount = floatval($inputData['amount']);
+            $balance = floatval($inputData['balance_due']);
+            $currency = isset($inputData['currency']) ? trim($inputData['currency']) : '$';
+            $dueDate = trim($inputData['due_date']);
+            $status = trim($inputData['status']);
+
+            if ($invId <= 0 || empty($code) || $amount < 0) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid billing edit details."]);
+                exit();
+            }
+
+            $stmt = $pdo->prepare("UPDATE `client_invoices` SET `invoice_code` = ?, `amount` = ?, `balance_due` = ?, `currency` = ?, `status` = ?, `due_date` = ? WHERE `id` = ?");
+            $stmt->execute([$code, $amount, $balance, $currency, $status, $dueDate, $invId]);
+            
+            echo json_encode(["success" => true, "message" => "Invoice updated successfully."]);
+            exit();
+        }
+
+        // 4. Admin Action: Delete invoice
+        if ($action === 'invoice_delete') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $invId = intval($inputData['invoice_delete_id']);
+
+            if ($invId <= 0) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid invoice deletion ID."]);
+                exit();
+            }
+
+            $stmt = $pdo->prepare("DELETE FROM `client_invoices` WHERE `id` = ?");
+            $stmt->execute([$invId]);
+            
+            echo json_encode(["success" => true, "message" => "Invoice record removed."]);
+            exit();
+        }
+
+        // 5. Client / Admin Action: Toggle invoice Paid / Pending status
         $invoiceId = isset($inputData['invoice_id']) ? intval($inputData['invoice_id']) : 0;
         if ($invoiceId > 0) {
             $invStmt = $pdo->prepare("SELECT * FROM `client_invoices` WHERE `id` = ?");
@@ -104,9 +198,12 @@ try {
 
             $newInvStatus = $invoice['status'] === 'Paid' ? 'Pending' : 'Paid';
             $clientOwnerId = intval($invoice['client_id']);
+            
+            // If marking paid, set balance due to 0.00. If pending, restore to invoice amount.
+            $newBalanceDue = $newInvStatus === 'Paid' ? 0.00 : floatval($invoice['amount']);
 
-            $updateInv = $pdo->prepare("UPDATE `client_invoices` SET `status` = ? WHERE `id` = ?");
-            $updateInv->execute([$newInvStatus, $invoiceId]);
+            $updateInv = $pdo->prepare("UPDATE `client_invoices` SET `status` = ?, `balance_due` = ? WHERE `id` = ?");
+            $updateInv->execute([$newInvStatus, $newBalanceDue, $invoiceId]);
 
             // Update payment task status accordingly
             $payTaskStmt = $pdo->prepare("UPDATE `client_tasks` SET `status` = ? WHERE `client_id` = ? AND `action_type` = 'payment'");
@@ -136,8 +233,7 @@ try {
             $systemMsg = "🔧 System Alert: Invoice '" . $invoice['invoice_code'] . "' status has been marked as " . $newInvStatus . " by the Admin. Project progress updated to " . $progressPercent . "% (" . $projStatus . ").";
             
             $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
-            $adminId = $adminStmt->fetchColumn();
-            if (!$adminId) $adminId = 1;
+            $adminId = $adminStmt->fetchColumn() ?: 1;
 
             $logStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
             $logStmt->execute([$adminId, $clientOwnerId, $systemMsg]);
@@ -152,7 +248,7 @@ try {
             exit();
         }
 
-        // Handle checklist task toggle
+        // 6. Checklist task toggle
         $taskId = isset($inputData['task_id']) ? intval($inputData['task_id']) : 0;
         if ($taskId <= 0) {
             http_response_code(400);
@@ -190,7 +286,6 @@ try {
             $updateProjBrief = $pdo->prepare("UPDATE `client_projects` SET `description` = ? WHERE `client_id` = ?");
             $updateProjBrief->execute([$briefText, $clientOwnerId]);
             
-            // Invoke the advanced 15-year Prompt Architect brief analyzer
             generate_brief_analysis($clientOwnerId, $briefText, $pdo);
         }
 
@@ -202,8 +297,10 @@ try {
 
         if ($task['action_type'] === 'payment') {
             $newInvoiceStatus = $newStatus === 'Completed' ? 'Paid' : 'Pending';
-            $updateInvoice = $pdo->prepare("UPDATE `client_invoices` SET `status` = ? WHERE `client_id` = ? AND `invoice_code` = 'INV-2026-095'");
-            $updateInvoice->execute([$newInvoiceStatus, $clientOwnerId]);
+            $newBalanceDue = $newStatus === 'Completed' ? 0.00 : 2800.00; // restore mock value
+            
+            $updateInvoice = $pdo->prepare("UPDATE `client_invoices` SET `status` = ?, `balance_due` = ? WHERE `client_id` = ? AND `invoice_code` = 'INV-2026-095'");
+            $updateInvoice->execute([$newInvoiceStatus, $newBalanceDue, $clientOwnerId]);
         }
 
         // Get count of completed tasks to calculate overall project progress dynamically
@@ -234,8 +331,7 @@ try {
         $systemMsg = "🔧 System Alert: Task '" . $task['title'] . "' has been marked as " . $newStatus . ". Project progress updated to " . $progressPercent . "% (" . $projStatus . ").";
         
         $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
-        $adminId = $adminStmt->fetchColumn();
-        if (!$adminId) $adminId = 1;
+        $adminId = $adminStmt->fetchColumn() ?: 1;
 
         $logStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
         $logStmt->execute([$adminId, $clientOwnerId, $systemMsg]);
@@ -255,6 +351,6 @@ try {
     }
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(["message" => "Database task error: " . $e->getMessage()]);
+    echo json_encode(["message" => "Database exception error: " . $e->getMessage()]);
     exit();
 }

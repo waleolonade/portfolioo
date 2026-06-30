@@ -296,7 +296,8 @@ try {
         'cms_social_management' => '{"networks":[{"name":"Facebook","url":"https://facebook.com/brainfeelstech","enabled":true,"show_badge":true},{"name":"Twitter","url":"https://twitter.com/brainfeelstech","enabled":true,"show_badge":true},{"name":"LinkedIn","url":"https://linkedin.com/company/brainfeelstech","enabled":true,"show_badge":true},{"name":"GitHub","url":"https://github.com/waleolonade/portfolioo","enabled":true,"show_badge":true},{"name":"Instagram","url":"https://instagram.com/brainfeelstech","enabled":true,"show_badge":true},{"name":"YouTube","url":"https://youtube.com/brainfeelstech","enabled":false,"show_badge":false}]}',
         'cms_whatsapp_hub' => '{"widget_enabled":true,"widget_title":"Need Help? Chat with Us","widget_subtitle":"We usually respond in a few minutes","agents":[{"id":"1","name":"Technical Support","phone":"2348061657738","department":"Technical","welcome_message":"Hello, I need technical support.","avatar":"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80","is_online":true},{"id":"2","name":"Sales & Inquiries","phone":"2348061657738","department":"Sales","welcome_message":"Hello, I want to get a free quote.","avatar":"https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80","is_online":true},{"id":"3","name":"Billing & Payments","phone":"2348061657738","department":"Billing","welcome_message":"Hello, I have a question about billing.","avatar":"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80","is_online":true}]}',
         'cms_theme_customizer' => '{"font_family_heading":"Inter","font_family_body":"Outfit","color_primary":"#0f172a","color_secondary":"#3b82f6","color_bg_light":"#ffffff","color_bg_dark":"#0f172a","color_text_light":"#1e293b","color_text_dark":"#f8fafc","color_accent":"#f59e0b","border_radius":8}',
-        'cms_seo_visibility' => '{"robots_txt":"User-agent: *\\nDisallow: /api/\\nAllow: /","og_title":"Brainfeels Tech | Custom Web & Mobile App Development","og_description":"We build websites, mobile apps, and IT solutions that scale.","og_image":"https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80","company_schema":"{\\n  \\\"@context\\\": \\\"https://schema.org\\\",\\n  \\\"@type\\\": \\\"ProfessionalService\\\",\\n  \\\"name\\\": \\\"Brainfeels Tech\\\",\\n  \\\"image\\\": \\\"https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80\\\",\\n  \\\"@id\\\": \\\"\\\",\\n  \\\"url\\\": \\\"http://localhost:5173/\\\",\\n  \\\"telephone\\\": \\\"08061657738\\\",\\n  \\\"address\\\": {\\n    \\\"@type\\\": \\\"PostalAddress\\\",\\n    \\\"streetAddress\\\": \\\"Lagos, Nigeria\\\",\\n    \\\"addressLocality\\\": \\\"Lagos\\\",\\n    \\\"addressCountry\\\": \\\"NG\\\"\\n  }\\n}"}'
+        'cms_seo_visibility' => '{"robots_txt":"User-agent: *\\nDisallow: /api/\\nAllow: /","og_title":"Brainfeels Tech | Custom Web & Mobile App Development","og_description":"We build websites, mobile apps, and IT solutions that scale.","og_image":"https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80","company_schema":"{\\n  \\\"@context\\\": \\\"https://schema.org\\\",\\n  \\\"@type\\\": \\\"ProfessionalService\\\",\\n  \\\"name\\\": \\\"Brainfeels Tech\\\",\\n  \\\"image\\\": \\\"https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80\\\",\\n  \\\"@id\\\": \\\"\\\",\\n  \\\"url\\\": \\\"http://localhost:5173/\\\",\\n  \\\"telephone\\\": \\\"08061657738\\\",\\n  \\\"address\\\": {\\n    \\\"@type\\\": \\\"PostalAddress\\\",\\n    \\\"streetAddress\\\": \\\"Lagos, Nigeria\\\",\\n    \\\"addressLocality\\\": \\\"Lagos\\\",\\n    \\\"addressCountry\\\": \\\"NG\\\"\\n  }\\n}"}',
+        'receipt_settings' => '{"layout":["header","meta","items","summary","footer"],"show_watermark":true,"tax_rate":0,"payment_terms":"Due upon receipt","custom_notes":"Thank you for choosing Brainfeels Tech. We appreciate your business!","footer_contact":"If you have any questions concerning this invoice, contact our billing department at billing@brainfeels.tech."}'
     ];
     
     $settingInsert = $pdo->prepare("INSERT INTO `cms_settings` (`setting_key`, `setting_value`) VALUES (?, ?)");
@@ -373,6 +374,8 @@ try {
         `client_id` INT NOT NULL,
         `invoice_code` VARCHAR(50) NOT NULL,
         `amount` DECIMAL(10,2) NOT NULL,
+        `balance_due` DECIMAL(10,2) DEFAULT 0.00,
+        `currency` VARCHAR(10) DEFAULT '$',
         `status` VARCHAR(20) NOT NULL DEFAULT 'Pending',
         `due_date` VARCHAR(50) NOT NULL,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -390,7 +393,13 @@ try {
         FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-    // Add optional columns to client_projects
+    // Add optional columns to client_projects and client_invoices
+    try {
+        $pdo->exec("ALTER TABLE `client_invoices` ADD `balance_due` DECIMAL(10,2) DEFAULT 0.00;");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `client_invoices` ADD `currency` VARCHAR(10) DEFAULT '$';");
+    } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE `client_projects` ADD `brief_details` TEXT DEFAULT NULL;");
     } catch (Exception $e) {}

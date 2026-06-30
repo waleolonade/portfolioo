@@ -20,7 +20,7 @@ export default function ClientChatsAdmin() {
   const [files, setFiles] = useState([]);
   
   // UI States
-  const [rightTab, setRightTab] = useState('chat'); // 'chat', 'invoices', 'files'
+  const [rightTab, setRightTab] = useState('chat'); // 'chat', 'invoices', 'files', 'receipt_settings'
   const [replyText, setReplyText] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,6 +28,25 @@ export default function ClientChatsAdmin() {
   const chatContainerRef = useRef(null);
   const isFirstLoadRef = useRef(true);
   const adminJustSentRef = useRef(false);
+
+  const [receiptSettings, setReceiptSettings] = useState(null);
+
+  // Create Invoice states
+  const [newInvoiceCode, setNewInvoiceCode] = useState('');
+  const [newInvoiceAmount, setNewInvoiceAmount] = useState('');
+  const [newInvoiceBalance, setNewInvoiceBalance] = useState('');
+  const [newInvoiceCurrency, setNewInvoiceCurrency] = useState('$');
+  const [newInvoiceDueDate, setNewInvoiceDueDate] = useState('');
+  const [newInvoiceStatus, setNewInvoiceStatus] = useState('Pending');
+
+  // Edit Invoice states
+  const [editingInvoiceId, setEditingInvoiceId] = useState(null);
+  const [editInvoiceCode, setEditInvoiceCode] = useState('');
+  const [editInvoiceAmount, setEditInvoiceAmount] = useState('');
+  const [editInvoiceBalance, setEditInvoiceBalance] = useState('');
+  const [editInvoiceCurrency, setEditInvoiceCurrency] = useState('$');
+  const [editInvoiceDueDate, setEditInvoiceDueDate] = useState('');
+  const [editInvoiceStatus, setEditInvoiceStatus] = useState('Pending');
 
   // Fetch all active client conversations
   const fetchConversations = async () => {
@@ -71,6 +90,7 @@ export default function ClientChatsAdmin() {
         setTasks(data.tasks);
         setInvoices(data.invoices || []);
         setFiles(data.files || []);
+        setReceiptSettings(data.receipt_settings || null);
       }
     } catch (err) {
       console.error('Error fetching client project:', err);
@@ -204,6 +224,134 @@ export default function ClientChatsAdmin() {
     } catch (err) {
       console.error('Error updating invoice status:', err);
     }
+  };
+
+  // Create new invoice record
+  const handleCreateInvoice = async (e) => {
+    e.preventDefault();
+    if (!newInvoiceCode || !newInvoiceAmount || !newInvoiceDueDate || !selectedClientId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'invoice_create',
+          client_id: selectedClientId,
+          invoice_code: newInvoiceCode,
+          amount: parseFloat(newInvoiceAmount),
+          balance_due: parseFloat(newInvoiceBalance || 0),
+          currency: newInvoiceCurrency,
+          due_date: newInvoiceDueDate,
+          status: newInvoiceStatus
+        })
+      });
+      if (res.ok) {
+        setNewInvoiceCode('');
+        setNewInvoiceAmount('');
+        setNewInvoiceBalance('');
+        setNewInvoiceCurrency('$');
+        setNewInvoiceDueDate('');
+        setNewInvoiceStatus('Pending');
+        fetchClientProjectData(selectedClientId);
+      }
+    } catch (err) {
+      console.error('Error creating invoice:', err);
+    }
+  };
+
+  // Update existing invoice record
+  const handleUpdateInvoice = async (e) => {
+    e.preventDefault();
+    if (!editInvoiceCode || !editInvoiceAmount || !editInvoiceDueDate || !editingInvoiceId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'invoice_update',
+          invoice_id: editingInvoiceId,
+          invoice_code: editInvoiceCode,
+          amount: parseFloat(editInvoiceAmount),
+          balance_due: parseFloat(editInvoiceBalance || 0),
+          currency: editInvoiceCurrency,
+          due_date: editInvoiceDueDate,
+          status: editInvoiceStatus
+        })
+      });
+      if (res.ok) {
+        setEditingInvoiceId(null);
+        fetchClientProjectData(selectedClientId);
+      }
+    } catch (err) {
+      console.error('Error updating invoice:', err);
+    }
+  };
+
+  // Delete invoice record
+  const handleDeleteInvoice = async (invoiceId) => {
+    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'invoice_delete',
+          invoice_delete_id: invoiceId
+        })
+      });
+      if (res.ok) {
+        if (editingInvoiceId === invoiceId) setEditingInvoiceId(null);
+        fetchClientProjectData(selectedClientId);
+      }
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+    }
+  };
+
+  // Save Dynamic Receipt Settings
+  const handleUpdateReceiptSetting = async (key, value) => {
+    if (!receiptSettings) return;
+    const updated = { ...receiptSettings, [key]: value };
+    setReceiptSettings(updated);
+    
+    try {
+      await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'save_receipt_settings',
+          settings: updated
+        })
+      });
+    } catch (err) {
+      console.error('Error saving receipt settings:', err);
+    }
+  };
+
+  // Rearrange receipt layout sections
+  const handleMoveLayoutSection = async (index, direction) => {
+    if (!receiptSettings || !receiptSettings.layout) return;
+    const layout = [...receiptSettings.layout];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= layout.length) return;
+    
+    const temp = layout[index];
+    layout[index] = layout[targetIndex];
+    layout[targetIndex] = temp;
+    
+    await handleUpdateReceiptSetting('layout', layout);
   };
 
   // Admin upload file to client workspace
@@ -500,6 +648,25 @@ export default function ClientChatsAdmin() {
                   >
                     <FileText size={14} /> Brief & Files
                   </button>
+
+                  <button
+                    onClick={() => setRightTab('receipt_settings')}
+                    style={{
+                      padding: '8px 12px',
+                      border: 'none',
+                      background: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      color: rightTab === 'receipt_settings' ? 'var(--primary)' : 'var(--text-muted)',
+                      borderBottom: rightTab === 'receipt_settings' ? '2px solid var(--primary)' : '2px solid transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Sparkles size={14} /> Receipt Designer
+                  </button>
                 </div>
 
                 {/* Tab 1: Checklist Control */}
@@ -544,45 +711,175 @@ export default function ClientChatsAdmin() {
 
                 {/* Tab 2: Billing & Invoices */}
                 {rightTab === 'invoices' && (
-                  <div style={{ textAlign: 'left' }}>
-                    <h5 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>Client Invoices</h5>
+                  <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {invoices.length > 0 ? (
-                        invoices.map((inv) => (
-                          <div 
-                            key={inv.id}
-                            style={{ 
-                              padding: '12px', 
-                              border: '1px solid var(--border)', 
-                              borderRadius: 'var(--radius-sm)', 
-                              backgroundColor: 'var(--bg-secondary)',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              fontSize: '0.85rem'
-                            }}
-                          >
-                            <div>
-                              <strong>{inv.invoice_code}</strong>
-                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                Amount: ${parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} | Due: {inv.due_date}
-                              </span>
-                            </div>
-                            
-                            <button
-                              onClick={() => handleToggleInvoiceStatus(inv.id)}
-                              className={`btn ${inv.status === 'Paid' ? 'btn-primary' : 'btn-outline'}`}
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                    {/* Invoice Lists */}
+                    <div>
+                      <h5 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px' }}>Client Invoices</h5>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {invoices.length > 0 ? (
+                          invoices.map((inv) => (
+                            <div 
+                              key={inv.id}
+                              style={{ 
+                                padding: '12px', 
+                                border: '1px solid var(--border)', 
+                                borderRadius: 'var(--radius-sm)', 
+                                backgroundColor: 'var(--bg-secondary)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '0.85rem'
+                              }}
                             >
-                              {inv.status === 'Paid' ? 'Paid' : 'Mark Paid'}
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No invoice logs generated.</p>
-                      )}
+                              <div style={{ flexGrow: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <strong>{inv.invoice_code}</strong>
+                                  <span className={`status-badge ${inv.status === 'Paid' ? 'status-paid' : 'status-pending'}`} style={{ padding: '2px 6px', fontSize: '0.65rem', borderRadius: '10px' }}>
+                                    {inv.status}
+                                  </span>
+                                </div>
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                  Amount: <strong>{inv.currency || '$'}{parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> | Balance Due: <strong style={{ color: parseFloat(inv.balance_due) > 0 ? 'var(--accent)' : 'var(--success)' }}>{inv.currency || '$'}{parseFloat(inv.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+                                </span>
+                                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                  Due: {inv.due_date}
+                                </span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  onClick={() => handleToggleInvoiceStatus(inv.id)}
+                                  className={`btn ${inv.status === 'Paid' ? 'btn-primary' : 'btn-outline'}`}
+                                  style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+                                >
+                                  Toggle Status
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingInvoiceId(inv.id);
+                                    setEditInvoiceCode(inv.invoice_code);
+                                    setEditInvoiceAmount(inv.amount);
+                                    setEditInvoiceBalance(inv.balance_due);
+                                    setEditInvoiceCurrency(inv.currency || '$');
+                                    setEditInvoiceDueDate(inv.due_date);
+                                    setEditInvoiceStatus(inv.status);
+                                  }}
+                                  className="btn btn-outline"
+                                  style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteInvoice(inv.id)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '2px 8px', fontSize: '0.7rem', color: 'red', borderColor: 'rgba(255,0,0,0.2)' }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No invoice logs generated.</p>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Invoice Edit Form */}
+                    {editingInvoiceId && (
+                      <form onSubmit={handleUpdateInvoice} style={{ padding: '12px', border: '1px dashed var(--primary)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h6 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', margin: 0 }}>Edit Invoice</h6>
+                          <button type="button" onClick={() => setEditingInvoiceId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem' }}>Cancel</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code</label>
+                            <input type="text" value={editInvoiceCode} onChange={(e) => setEditInvoiceCode(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due Date</label>
+                            <input type="text" value={editInvoiceDueDate} onChange={(e) => setEditInvoiceDueDate(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Amount</label>
+                            <input type="number" step="0.01" value={editInvoiceAmount} onChange={(e) => setEditInvoiceAmount(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Balance Due</label>
+                            <input type="number" step="0.01" value={editInvoiceBalance} onChange={(e) => setEditInvoiceBalance(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Currency</label>
+                            <select value={editInvoiceCurrency} onChange={(e) => setEditInvoiceCurrency(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                              <option value="$">USD ($)</option>
+                              <option value="₦">NGN (₦)</option>
+                              <option value="€">EUR (€)</option>
+                              <option value="£">GBP (£)</option>
+                              <option value="C$">CAD (C$)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</label>
+                            <select value={editInvoiceStatus} onChange={(e) => setEditInvoiceStatus(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                              <option value="Pending">Pending</option>
+                              <option value="Paid">Paid</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button type="submit" className="btn" style={{ padding: '6px', fontSize: '0.75rem', width: '100%', marginTop: '4px' }}>Save Invoice Updates</button>
+                      </form>
+                    )}
+
+                    {/* Invoice Create Form */}
+                    {!editingInvoiceId && (
+                      <form onSubmit={handleCreateInvoice} style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <h6 style={{ fontSize: '0.8rem', fontWeight: 700, margin: 0 }}>Create New Invoice</h6>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Code</label>
+                            <input type="text" placeholder="e.g. INV-2026-102" value={newInvoiceCode} onChange={(e) => setNewInvoiceCode(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due Date</label>
+                            <input type="text" placeholder="e.g. July 20, 2026" value={newInvoiceDueDate} onChange={(e) => setNewInvoiceDueDate(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Amount</label>
+                            <input type="number" step="0.01" placeholder="0.00" value={newInvoiceAmount} onChange={(e) => setNewInvoiceAmount(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Balance Due</label>
+                            <input type="number" step="0.01" placeholder="0.00" value={newInvoiceBalance} onChange={(e) => setNewInvoiceBalance(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Currency</label>
+                            <select value={newInvoiceCurrency} onChange={(e) => setNewInvoiceCurrency(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                              <option value="$">USD ($)</option>
+                              <option value="₦">NGN (₦)</option>
+                              <option value="€">EUR (€)</option>
+                              <option value="£">GBP (£)</option>
+                              <option value="C$">CAD (C$)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</label>
+                            <select value={newInvoiceStatus} onChange={(e) => setNewInvoiceStatus(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                              <option value="Pending">Pending</option>
+                              <option value="Paid">Paid</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button type="submit" className="btn" style={{ padding: '6px', fontSize: '0.75rem', width: '100%', marginTop: '4px' }}>Create Invoice</button>
+                      </form>
+                    )}
+
                   </div>
                 )}
 
@@ -661,6 +958,127 @@ export default function ClientChatsAdmin() {
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No client uploads found.</p>
                         )}
                       </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* Tab 4: Receipt Settings / Designer */}
+                {rightTab === 'receipt_settings' && (
+                  <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h5 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Receipt PDF Structure & Layout Designer</h5>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                      Rearrange receipt layout sections, customize tax rates, set payment terms, and manage the security watermark.
+                    </p>
+
+                    {/* Watermark toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)' }}>
+                      <input 
+                        type="checkbox" 
+                        id="show_watermark"
+                        checked={receiptSettings?.show_watermark ?? true}
+                        onChange={(e) => handleUpdateReceiptSetting('show_watermark', e.target.checked)}
+                      />
+                      <label htmlFor="show_watermark" style={{ fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
+                        Enable Security Background Watermark
+                      </label>
+                    </div>
+
+                    {/* Section Layout Re-ordering */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>Section Layout Order (Click arrows to rearrange)</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {receiptSettings?.layout?.map((section, idx) => (
+                          <div 
+                            key={section}
+                            style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              padding: '8px 12px', 
+                              border: '1px solid var(--border)', 
+                              borderRadius: 'var(--radius-sm)', 
+                              backgroundColor: 'var(--bg-secondary)',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <span style={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+                              {section === 'header' && '🏛️ Header & Billing Profile'}
+                              {section === 'meta' && '👥 Client Billing Info & Status Seal'}
+                              {section === 'items' && '📋 Itemized Milestones & Description'}
+                              {section === 'summary' && '💰 Subtotal, Tax & Balance Due'}
+                              {section === 'footer' && '📝 Custom Footer Terms & Notes'}
+                            </span>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button 
+                                onClick={() => handleMoveLayoutSection(idx, -1)}
+                                disabled={idx === 0}
+                                className="btn btn-outline"
+                                style={{ padding: '2px 6px', fontSize: '0.7rem' }}
+                              >
+                                ▲
+                              </button>
+                              <button 
+                                onClick={() => handleMoveLayoutSection(idx, 1)}
+                                disabled={idx === (receiptSettings?.layout?.length ?? 5) - 1}
+                                className="btn btn-outline"
+                                style={{ padding: '2px 6px', fontSize: '0.7rem' }}
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tax rate and Payment Terms */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>Tax Rate (%)</label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={receiptSettings?.tax_rate ?? 0}
+                          onChange={(e) => handleUpdateReceiptSetting('tax_rate', parseFloat(e.target.value || 0))}
+                          className="form-control"
+                          style={{ width: '100%', padding: '6px', fontSize: '0.8rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>Payment Terms</label>
+                        <input 
+                          type="text" 
+                          value={receiptSettings?.payment_terms ?? ''}
+                          onChange={(e) => handleUpdateReceiptSetting('payment_terms', e.target.value)}
+                          className="form-control"
+                          style={{ width: '100%', padding: '6px', fontSize: '0.8rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Custom notes */}
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>Custom Receipt Note</label>
+                      <textarea 
+                        rows={2}
+                        value={receiptSettings?.custom_notes ?? ''}
+                        onChange={(e) => handleUpdateReceiptSetting('custom_notes', e.target.value)}
+                        className="form-control"
+                        style={{ width: '100%', padding: '6px', fontSize: '0.8rem', resize: 'vertical' }}
+                      />
+                    </div>
+
+                    {/* Footer Contact Info */}
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>Footer Contact Line</label>
+                      <input 
+                        type="text" 
+                        value={receiptSettings?.footer_contact ?? ''}
+                        onChange={(e) => handleUpdateReceiptSetting('footer_contact', e.target.value)}
+                        className="form-control"
+                        style={{ width: '100%', padding: '6px', fontSize: '0.8rem' }}
+                      />
                     </div>
 
                   </div>

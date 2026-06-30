@@ -98,9 +98,9 @@ if ($method === 'POST') {
         }
 
         // Seed initial Invoices
-        $invoiceStmt = $pdo->prepare("INSERT INTO `client_invoices` (`client_id`, `invoice_code`, `amount`, `status`, `due_date`) VALUES (?, ?, ?, ?, ?)");
-        $invoiceStmt->execute([$newUserId, 'INV-2026-089', 1200.00, 'Paid', 'June 10, 2026']);
-        $invoiceStmt->execute([$newUserId, 'INV-2026-095', 2800.00, 'Pending', 'July 15, 2026']);
+        $invoiceStmt = $pdo->prepare("INSERT INTO `client_invoices` (`client_id`, `invoice_code`, `amount`, `balance_due`, `currency`, `status`, `due_date`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $invoiceStmt->execute([$newUserId, 'INV-2026-089', 1200.00, 0.00, '$', 'Paid', 'June 10, 2026']);
+        $invoiceStmt->execute([$newUserId, 'INV-2026-095', 2800.00, 2800.00, '$', 'Pending', 'July 15, 2026']);
 
         // Seed initial Files
         $fileStmt = $pdo->prepare("INSERT INTO `client_files` (`client_id`, `filename`, `file_url`, `file_size`, `category`) VALUES (?, ?, ?, ?, ?)");

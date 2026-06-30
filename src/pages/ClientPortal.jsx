@@ -553,6 +553,7 @@ export default function ClientPortal() {
                         <th>Invoice ID</th>
                         <th>Issue Date</th>
                         <th>Billing Value</th>
+                        <th>Balance Due</th>
                         <th>Payment Status</th>
                         <th>Actions</th>
                       </tr>
@@ -563,7 +564,10 @@ export default function ClientPortal() {
                           <tr key={idx}>
                             <td><strong>{inv.invoice_code}</strong></td>
                             <td>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : 'N/A'}</td>
-                            <td>${parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td>{inv.currency || '$'}{parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td style={{ color: parseFloat(inv.balance_due) > 0 ? 'var(--accent)' : 'var(--success)', fontWeight: 'bold' }}>
+                              {inv.currency || '$'}{parseFloat(inv.balance_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </td>
                             <td>
                               <span style={{
                                 display: 'inline-block',
@@ -592,7 +596,7 @@ export default function ClientPortal() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</td>
+                          <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</td>
                         </tr>
                       )}
                     </tbody>

@@ -96,7 +96,7 @@ try {
     }
     $tagline = isset($brandAssets['tagline']) ? $brandAssets['tagline'] : 'Next-Gen Digital Solutions Agency';
     $logoText = isset($brandAssets['logo_text']) ? $brandAssets['logo_text'] : 'Brainfeels Tech';
-    
+
     // Split and style 'Tech' with brand colors
     $styledLogo = htmlspecialchars($logoText);
     if (stripos($styledLogo, 'Tech') !== false) {
@@ -112,14 +112,32 @@ try {
     $colorDark = isset($themeSettings['color_primary']) ? $themeSettings['color_primary'] : '#0f172a';
     $colorAccent = isset($themeSettings['color_accent']) ? $themeSettings['color_accent'] : '#f59e0b';
 
+    // Parse receipt settings
+    $receiptSettings = [];
+    if (isset($cmsSettings['receipt_settings'])) {
+        $receiptSettings = json_decode($cmsSettings['receipt_settings'], true);
+    }
+    $layoutOrder = isset($receiptSettings['layout']) ? $receiptSettings['layout'] : ["header", "meta", "items", "summary", "footer"];
+    $showWatermark = isset($receiptSettings['show_watermark']) ? (bool)$receiptSettings['show_watermark'] : true;
+    $taxRate = isset($receiptSettings['tax_rate']) ? floatval($receiptSettings['tax_rate']) : 0.0;
+    $paymentTerms = isset($receiptSettings['payment_terms']) ? $receiptSettings['payment_terms'] : 'Due upon receipt';
+    $customNotes = isset($receiptSettings['custom_notes']) ? $receiptSettings['custom_notes'] : 'Thank you for choosing Brainfeels Tech. We appreciate your business!';
+    $footerContact = isset($receiptSettings['footer_contact']) ? $receiptSettings['footer_contact'] : 'If you have any questions concerning this invoice, contact our billing department.';
+
     // Format invoice details
     $invoiceCode = htmlspecialchars($invoice['invoice_code']);
     $amount = floatval($invoice['amount']);
+    $balanceDue = isset($invoice['balance_due']) ? floatval($invoice['balance_due']) : 0.00;
+    $currency = isset($invoice['currency']) ? htmlspecialchars($invoice['currency']) : '$';
     $status = htmlspecialchars($invoice['status']);
     $createdDate = date('F d, Y', strtotime($invoice['created_at']));
     $dueDate = htmlspecialchars($invoice['due_date']);
     $projectCode = $project ? htmlspecialchars($project['project_code']) : 'N/A';
     $projectTitle = $project ? htmlspecialchars($project['title']) : 'General Digital Services';
+
+    // Compute Tax and Total
+    $taxAmount = $amount * ($taxRate / 100.0);
+    $totalDue = $amount + $taxAmount;
 
     // Output a stunning, professional, print-friendly A4 Invoice layout
 ?>
@@ -307,7 +325,7 @@ try {
         }
 
         .summary-table {
-            width: 300px;
+            width: 350px;
             border-collapse: collapse;
         }
 
@@ -390,99 +408,130 @@ try {
     </div>
 
     <div class="invoice-container">
+        
+        <?php if ($showWatermark): ?>
         <!-- Watermark -->
         <div class="watermark <?php echo $status === 'Paid' ? 'watermark-paid' : 'watermark-pending'; ?>">
             <?php echo $status; ?>
         </div>
+        <?php endif; ?>
 
-        <!-- Header -->
-        <div class="header-section">
-            <div class="logo-area">
-                <h1><?php echo $styledLogo; ?></h1>
-                <p><?php echo htmlspecialchars($tagline); ?></p>
-                <p style="font-size: 10px; font-weight: normal; margin-top: 8px;">
-                    <?php echo htmlspecialchars($companyAddress); ?><br>
-                    Phone: <?php echo htmlspecialchars($companyPhone); ?><br>
-                    Email: <?php echo htmlspecialchars($companyEmail); ?>
-                </p>
-            </div>
-            <div class="invoice-details">
-                <h2>INVOICE</h2>
-                <p><strong>Code:</strong> <?php echo $invoiceCode; ?></p>
-                <p><strong>Date Issued:</strong> <?php echo $createdDate; ?></p>
-                <p><strong>Due Date:</strong> <?php echo $dueDate; ?></p>
-            </div>
-        </div>
-
-        <!-- Meta Grid -->
-        <div class="meta-grid">
-            <div class="meta-box">
-                <h3>Billed To:</h3>
-                <p><?php echo htmlspecialchars($clientUsername); ?></p>
-                <span>Project Code: <?php echo $projectCode; ?></span>
-            </div>
-            <div class="meta-box" style="text-align: right;">
-                <h3>Payment Status:</h3>
-                <div>
-                    <span class="status-badge <?php echo $status === 'Paid' ? 'status-paid' : 'status-pending'; ?>">
-                        <?php echo $status; ?>
-                    </span>
+        <!-- Dynamic Layout Sections -->
+        <?php foreach ($layoutOrder as $section): ?>
+            
+            <?php if ($section === 'header'): ?>
+                <!-- Header -->
+                <div class="header-section">
+                    <div class="logo-area">
+                        <h1><?php echo $styledLogo; ?></h1>
+                        <p><?php echo htmlspecialchars($tagline); ?></p>
+                        <p style="font-size: 10px; font-weight: normal; margin-top: 8px;">
+                            <?php echo htmlspecialchars($companyAddress); ?><br>
+                            Phone: <?php echo htmlspecialchars($companyPhone); ?><br>
+                            Email: <?php echo htmlspecialchars($companyEmail); ?>
+                        </p>
+                    </div>
+                    <div class="invoice-details">
+                        <h2>INVOICE</h2>
+                        <p><strong>Code:</strong> <?php echo $invoiceCode; ?></p>
+                        <p><strong>Date Issued:</strong> <?php echo $createdDate; ?></p>
+                        <p><strong>Due Date:</strong> <?php echo $dueDate; ?></p>
+                        <p><strong>Terms:</strong> <?php echo htmlspecialchars($paymentTerms); ?></p>
+                    </div>
                 </div>
-            </div>
-        </div>
+            
+            <?php elseif ($section === 'meta'): ?>
+                <!-- Meta Grid -->
+                <div class="meta-grid">
+                    <div class="meta-box">
+                        <h3>Billed To:</h3>
+                        <p><?php echo htmlspecialchars($clientUsername); ?></p>
+                        <span>Project Code: <?php echo $projectCode; ?></span>
+                    </div>
+                    <div class="meta-box" style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                        <h3>Payment Status:</h3>
+                        <div style="margin-bottom: 8px;">
+                            <span class="status-badge <?php echo $status === 'Paid' ? 'status-paid' : 'status-pending'; ?>">
+                                <?php echo $status; ?>
+                            </span>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-light); text-align: right;">
+                            <div>Ref: <?php echo strtoupper(substr(hash('sha256', $invoiceCode . $amount), 0, 16)); ?></div>
+                            <div style="margin-top: 2px; font-family: monospace;">SECURE TRANSACTION SEAL</div>
+                        </div>
+                    </div>
+                </div>
+            
+            <?php elseif ($section === 'items'): ?>
+                <!-- Items Table -->
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70%;">Description</th>
+                            <th style="width: 10%; text-align: center;">Qty</th>
+                            <th style="width: 20%; text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <strong><?php echo $projectTitle; ?></strong>
+                                <span style="display: block; font-size: 12px; color: var(--text-light); margin-top: 4px;">
+                                    <?php 
+                                    if ($amount <= 1500) {
+                                        echo "Initial project scoping, requirements discovery and Figma visual mockup designs.";
+                                    } else {
+                                        echo "Core engineering milestone development, database modeling, decoupled system integrations, and staging environment setups.";
+                                    }
+                                    ?>
+                                </span>
+                            </td>
+                            <td style="text-align: center;">1</td>
+                            <td style="text-align: right;"><?php echo $currency; ?><?php echo number_format($amount, 2); ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+            
+            <?php elseif ($section === 'summary'): ?>
+                <!-- Summary -->
+                <div class="summary-section">
+                    <table class="summary-table">
+                        <tr>
+                            <td style="color: var(--text-light);">Subtotal:</td>
+                            <td style="text-align: right;"><?php echo $currency; ?><?php echo number_format($amount, 2); ?></td>
+                        </tr>
+                        <?php if ($taxRate > 0): ?>
+                        <tr>
+                            <td style="color: var(--text-light);">Tax (<?php echo number_format($taxRate, 2); ?>%):</td>
+                            <td style="text-align: right;"><?php echo $currency; ?><?php echo number_format($taxAmount, 2); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr class="total-row">
+                            <td>Total Due:</td>
+                            <td style="text-align: right;"><?php echo $currency; ?><?php echo number_format($totalDue, 2); ?></td>
+                        </tr>
+                        
+                        <!-- Dynamic Balance Display -->
+                        <tr>
+                            <td style="color: var(--text-light); padding-top: 12px; border-top: 1px dashed var(--border);">Balance Due:</td>
+                            <td style="text-align: right; font-weight: 700; padding-top: 12px; border-top: 1px dashed var(--border); color: <?php echo $balanceDue > 0 ? 'var(--accent)' : 'var(--success)'; ?>;">
+                                <?php echo $currency; ?><?php echo number_format($balanceDue, 2); ?>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            
+            <?php elseif ($section === 'footer'): ?>
+                <!-- Footer -->
+                <div class="footer-note">
+                    <p><?php echo htmlspecialchars($customNotes); ?></p>
+                    <p style="color: var(--text-light); margin-top: 10px;"><?php echo htmlspecialchars($footerContact); ?></p>
+                </div>
+            
+            <?php endif; ?>
 
-        <!-- Items Table -->
-        <table class="item-table">
-            <thead>
-                <tr>
-                    <th style="width: 70%;">Description</th>
-                    <th style="width: 10%; text-align: center;">Qty</th>
-                    <th style="width: 20%; text-align: right;">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <strong><?php echo $projectTitle; ?></strong>
-                        <span style="display: block; font-size: 12px; color: var(--text-light); margin-top: 4px;">
-                            <?php 
-                            if ($amount <= 1500) {
-                                echo "Initial project scoping, requirements discovery and Figma visual mockup designs.";
-                            } else {
-                                echo "Core engineering milestone development, database modeling, decoupled system integrations, and staging environment setups.";
-                            }
-                            ?>
-                        </span>
-                    </td>
-                    <td style="text-align: center;">1</td>
-                    <td style="text-align: right;">$<?php echo number_format($amount, 2); ?></td>
-                </tr>
-            </tbody>
-        </table>
+        <?php endforeach; ?>
 
-        <!-- Summary -->
-        <div class="summary-section">
-            <table class="summary-table">
-                <tr>
-                    <td style="color: var(--text-light);">Subtotal:</td>
-                    <td style="text-align: right;">$<?php echo number_format($amount, 2); ?></td>
-                </tr>
-                <tr>
-                    <td style="color: var(--text-light);">Tax (0.00%):</td>
-                    <td style="text-align: right;">$0.00</td>
-                </tr>
-                <tr class="total-row">
-                    <td>Total Due:</td>
-                    <td style="text-align: right;">$<?php echo number_format($amount, 2); ?></td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer-note">
-            <p>Thank you for choosing <?php echo htmlspecialchars($companyName); ?>. We appreciate your business!</p>
-            <p style="color: var(--text-light); margin-top: 10px;">If you have any questions concerning this invoice, contact our billing department at <?php echo htmlspecialchars($companyEmail); ?>.</p>
-        </div>
     </div>
 
     <script>
