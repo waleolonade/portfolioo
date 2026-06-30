@@ -330,6 +330,74 @@ try {
         `description` VARCHAR(255) NOT NULL DEFAULT 'Auto-save',
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Client Portal Tables
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `client_projects` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `client_id` INT NOT NULL,
+        `title` VARCHAR(255) NOT NULL,
+        `description` TEXT DEFAULT NULL,
+        `progress` INT NOT NULL DEFAULT 0,
+        `status` VARCHAR(50) NOT NULL DEFAULT 'Planning',
+        `target_date` VARCHAR(100) DEFAULT '',
+        `project_code` VARCHAR(50) DEFAULT '',
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `client_tasks` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `client_id` INT NOT NULL,
+        `title` VARCHAR(255) NOT NULL,
+        `description` TEXT DEFAULT NULL,
+        `status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+        `action_type` VARCHAR(100) DEFAULT '',
+        `due_date` VARCHAR(100) DEFAULT '',
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `chat_messages` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `sender_id` INT NOT NULL,
+        `receiver_id` INT DEFAULT NULL,
+        `message` TEXT NOT NULL,
+        `sender_name` VARCHAR(100) NOT NULL,
+        `is_bot` TINYINT(1) DEFAULT 0,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`sender_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `client_invoices` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `client_id` INT NOT NULL,
+        `invoice_code` VARCHAR(50) NOT NULL,
+        `amount` DECIMAL(10,2) NOT NULL,
+        `status` VARCHAR(20) NOT NULL DEFAULT 'Pending',
+        `due_date` VARCHAR(50) NOT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `client_files` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `client_id` INT NOT NULL,
+        `filename` VARCHAR(255) NOT NULL,
+        `file_url` VARCHAR(255) NOT NULL,
+        `file_size` VARCHAR(50) NOT NULL,
+        `category` VARCHAR(50) NOT NULL DEFAULT 'Document',
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Add optional columns to client_projects
+    try {
+        $pdo->exec("ALTER TABLE `client_projects` ADD `brief_details` TEXT DEFAULT NULL;");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `client_projects` ADD `feedback_details` TEXT DEFAULT NULL;");
+    } catch (Exception $e) {}
+
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(["error" => "Database connection/initialization failed: " . $e->getMessage()]);

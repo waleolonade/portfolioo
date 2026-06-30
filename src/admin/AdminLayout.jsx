@@ -26,8 +26,8 @@ export default function AdminLayout() {
 
   const hasAccess = (tabName) => {
     if (role === 'Super Admin') return true;
-    if (role === 'Project Manager' && tabName === 'projects') return true;
-    if (role === 'Support Agent' && tabName === 'leads') return true;
+    if (role === 'Project Manager' && ['projects', 'chats'].includes(tabName)) return true;
+    if (role === 'Support Agent' && ['leads', 'chats'].includes(tabName)) return true;
     if (role === 'Content Editor' && ['cms', 'services', 'careers', 'ai'].includes(tabName)) return true;
     return false;
   };
@@ -64,6 +64,11 @@ export default function AdminLayout() {
           {hasAccess('leads') && (
             <li className={`sidebar-item ${isActive('/admin/leads') ? 'active' : ''}`} onClick={() => navigate('/admin/leads')}>
               <MessageSquare size={18} /> Lead Center
+            </li>
+          )}
+          {hasAccess('chats') && (
+            <li className={`sidebar-item ${isActive('/admin/chats') ? 'active' : ''}`} onClick={() => navigate('/admin/chats')}>
+              <MessageSquare size={18} /> Client Chats
             </li>
           )}
           {hasAccess('careers') && (

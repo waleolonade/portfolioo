@@ -36,6 +36,7 @@ import ServicesAdmin from './admin/pages/ServicesAdmin';
 import LeadsAdmin from './admin/pages/LeadsAdmin';
 import CareersAdmin from './admin/pages/CareersAdmin';
 import PageBuilderCms from './admin/pages/PageBuilderCms';
+import ClientChatsAdmin from './admin/pages/ClientChatsAdmin';
 
 
 const SECTION_COMPONENTS = {
@@ -461,6 +462,7 @@ function App() {
             <Route path="projects" element={<ProjectsAdmin />} />
             <Route path="services" element={<ServicesAdmin />} />
             <Route path="leads" element={<LeadsAdmin />} />
+            <Route path="chats" element={<ClientChatsAdmin />} />
             <Route path="careers" element={<CareersAdmin />} />
           </Route>
           

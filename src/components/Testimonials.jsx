@@ -9,13 +9,17 @@ export default function Testimonials({ cms = {} }) {
   useEffect(() => {
     const loadTestimonials = () => {
       fetch(`${API_BASE_URL}/testimonials.php`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('API server returned error status ' + res.status);
+          return res.json();
+        })
         .then(data => {
-          setTestimonials(data || []);
+          setTestimonials(Array.isArray(data) ? data : []);
           setLoading(false);
         })
         .catch(err => {
           console.error('Failed to load testimonials', err);
+          setTestimonials([]);
           setLoading(false);
         });
     };

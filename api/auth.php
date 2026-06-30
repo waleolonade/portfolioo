@@ -35,7 +35,8 @@ if ($method === 'POST') {
                 "token" => $token,
                 "user" => [
                     "id" => $user['id'],
-                    "username" => $user['username']
+                    "username" => $user['username'],
+                    "role" => $user['role']
                 ]
             ]);
             exit();
