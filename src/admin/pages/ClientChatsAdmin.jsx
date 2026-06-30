@@ -56,6 +56,10 @@ export default function ClientChatsAdmin() {
   const [adminUploadCategory, setAdminUploadCategory] = useState('Specs');
   const [adminSelectedFile, setAdminSelectedFile] = useState(null);
 
+  // Edit Project Target Date states
+  const [editingTargetDate, setEditingTargetDate] = useState(false);
+  const [newTargetDate, setNewTargetDate] = useState('');
+
   // Fetch all active client conversations
   const fetchConversations = async () => {
     try {
@@ -457,6 +461,36 @@ export default function ClientChatsAdmin() {
     }
   };
 
+  // Update Project Target Date
+  const handleUpdateTargetDate = async (e) => {
+    e.preventDefault();
+    if (!newTargetDate.trim() || !selectedClientId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'project_update_target_date',
+          client_id: selectedClientId,
+          target_date: newTargetDate
+        })
+      });
+      if (res.ok) {
+        setEditingTargetDate(false);
+        fetchClientProjectData(selectedClientId);
+        fetchClientChat(selectedClientId);
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to update target date.");
+      }
+    } catch (err) {
+      console.error("Error updating target date:", err);
+    }
+  };
+
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await fetchConversations();
@@ -649,9 +683,37 @@ export default function ClientChatsAdmin() {
                     <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
                       <div style={{ width: `${project.progress}%`, height: '100%', backgroundColor: 'var(--primary)' }} />
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Current Stage: <strong>{project.status}</strong> | Target: <strong>{project.target_date}</strong>
-                    </div>
+                    {!editingTargetDate ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                        <span>Stage: <strong>{project.status}</strong></span>
+                        <span>|</span>
+                        <span>Target: <strong>{project.target_date}</strong></span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setEditingTargetDate(true);
+                            setNewTargetDate(project.target_date || '');
+                          }}
+                          style={{ padding: '1px 6px', fontSize: '0.65rem', cursor: 'pointer', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--primary)', marginLeft: '4px' }}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleUpdateTargetDate} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Target:</label>
+                        <input 
+                          type="text" 
+                          value={newTargetDate} 
+                          onChange={(e) => setNewTargetDate(e.target.value)} 
+                          className="form-control" 
+                          style={{ padding: '2px 6px', fontSize: '0.75rem', width: '130px', margin: 0 }} 
+                          required 
+                        />
+                        <button type="submit" className="btn btn-primary" style={{ padding: '2px 8px', fontSize: '0.7rem', margin: 0 }}>Save</button>
+                        <button type="button" onClick={() => setEditingTargetDate(false)} className="btn btn-outline" style={{ padding: '2px 8px', fontSize: '0.7rem', margin: 0 }}>Cancel</button>
+                      </form>
+                    )}
                   </div>
                 ) : (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading parameters...</p>

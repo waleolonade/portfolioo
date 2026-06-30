@@ -294,6 +294,34 @@ try {
             exit();
         }
 
+        // Admin Action: Update Project Target Date
+        if ($action === 'project_update_target_date') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $clientId = intval($inputData['client_id']);
+            $targetDate = trim($inputData['target_date'] ?? '');
+
+            if ($clientId <= 0 || empty($targetDate)) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid parameters for updating target date."]);
+                exit();
+            }
+
+            // Update database
+            $stmt = $pdo->prepare("UPDATE `client_projects` SET `target_date` = ? WHERE `client_id` = ?");
+            $stmt->execute([$targetDate, $clientId]);
+
+            // Add system log message
+            $systemMsg = "🔧 System Alert: Project target release date has been updated to '" . $targetDate . "' by the Admin.";
+            $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
+            $adminId = $adminStmt->fetchColumn() ?: 1;
+
+            $logStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
+            $logStmt->execute([$adminId, $clientId, $systemMsg]);
+
+            echo json_encode(["success" => true, "message" => "Target release date updated successfully."]);
+            exit();
+        }
+
         // 5. Client / Admin Action: Toggle invoice Paid / Pending status
         $invoiceId = isset($inputData['invoice_id']) ? intval($inputData['invoice_id']) : 0;
         if ($invoiceId > 0) {
