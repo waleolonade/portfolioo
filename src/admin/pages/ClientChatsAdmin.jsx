@@ -48,6 +48,10 @@ export default function ClientChatsAdmin() {
   const [editInvoiceDueDate, setEditInvoiceDueDate] = useState('');
   const [editInvoiceStatus, setEditInvoiceStatus] = useState('Pending');
 
+  // Request new file states
+  const [requestFileCategory, setRequestFileCategory] = useState('Specs');
+  const [requestFileReason, setRequestFileReason] = useState('');
+
   // Fetch all active client conversations
   const fetchConversations = async () => {
     try {
@@ -313,6 +317,63 @@ export default function ClientChatsAdmin() {
       }
     } catch (err) {
       console.error('Error deleting invoice:', err);
+    }
+  };
+
+  // Delete client file
+  const handleDeleteClientFile = async (fileId) => {
+    if (!window.confirm("Are you sure you want to delete this document from the repository?")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'file_delete',
+          file_id: fileId
+        })
+      });
+      if (res.ok) {
+        fetchClientProjectData(selectedClientId);
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to delete file.");
+      }
+    } catch (err) {
+      console.error("Error deleting file:", err);
+    }
+  };
+
+  // Request new file upload from client
+  const handleRequestFile = async (e) => {
+    e.preventDefault();
+    if (!requestFileReason.trim() || !selectedClientId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'file_request',
+          client_id: selectedClientId,
+          category: requestFileCategory,
+          reason: requestFileReason
+        })
+      });
+      if (res.ok) {
+        setRequestFileReason('');
+        alert("Upload request has been sent to client as a new checklist task!");
+        fetchClientProjectData(selectedClientId);
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to submit request.");
+      }
+    } catch (err) {
+      console.error("Error requesting file:", err);
     }
   };
 
@@ -942,15 +1003,24 @@ export default function ClientChatsAdmin() {
                                 </span>
                               </div>
 
-                              <a 
-                                href={`${API_BASE_URL.replace('/api', '')}/${file.file_url}`} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                download
-                                style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}
-                              >
-                                <Download size={14} />
-                              </a>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <a 
+                                  href={`${API_BASE_URL.replace('/api', '')}/${file.file_url}`} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  download
+                                  style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <Download size={14} />
+                                </a>
+                                <button
+                                  onClick={() => handleDeleteClientFile(file.id)}
+                                  className="btn btn-outline"
+                                  style={{ padding: '2px 6px', fontSize: '0.65rem', color: 'red', borderColor: 'rgba(255,0,0,0.2)', margin: 0 }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </div>
                           ))
                         ) : (
@@ -958,6 +1028,38 @@ export default function ClientChatsAdmin() {
                         )}
                       </div>
                     </div>
+
+                    {/* Request New Document Form */}
+                    <form onSubmit={handleRequestFile} style={{ padding: '12px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <h6 style={{ fontSize: '0.8rem', fontWeight: 700, margin: 0 }}>Request Document Upload</h6>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Category</label>
+                          <select value={requestFileCategory} onChange={(e) => setRequestFileCategory(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                            <option value="Specs">Specs</option>
+                            <option value="API Docs">API Docs</option>
+                            <option value="Contracts">Contracts</option>
+                            <option value="Assets">Assets</option>
+                            <option value="Mockup Feedback">Mockup Feedback</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Reason / Instruction</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Please upload your company high-res logo assets." 
+                            value={requestFileReason} 
+                            onChange={(e) => setRequestFileReason(e.target.value)} 
+                            className="form-control" 
+                            style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} 
+                            required 
+                          />
+                        </div>
+                      </div>
+                      <button type="submit" className="btn" style={{ padding: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+                        Send Upload Request
+                      </button>
+                    </form>
 
                   </div>
                 )}

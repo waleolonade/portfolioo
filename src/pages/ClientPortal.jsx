@@ -426,6 +426,26 @@ export default function ClientPortal() {
                                   </div>
                                 )}
 
+                                {task.action_type === 'upload' && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                      <strong>Instruction / Request Reason:</strong>
+                                      <span style={{ display: 'block', padding: '6px 10px', marginTop: '4px', backgroundColor: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--accent)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                        {task.description}
+                                      </span>
+                                    </p>
+                                    <label className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', width: 'fit-content', margin: 0 }}>
+                                      <Upload size={14} /> Upload Requested Document
+                                      <input 
+                                        type="file" 
+                                        onChange={(e) => handleFileUpload(e, task.id, 'Specs')} 
+                                        style={{ display: 'none' }} 
+                                        disabled={loading}
+                                      />
+                                    </label>
+                                  </div>
+                                )}
+
                                 {task.action_type === 'mockup' && (
                                   <div style={{ display: 'flex', gap: '10px' }}>
                                     <button

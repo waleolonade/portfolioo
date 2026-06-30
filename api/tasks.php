@@ -197,6 +197,103 @@ try {
             exit();
         }
 
+        // Admin Action: Delete client file/document
+        if ($action === 'file_delete') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $fileId = intval($inputData['file_id']);
+
+            if ($fileId <= 0) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid file ID for deletion."]);
+                exit();
+            }
+
+            // Fetch file to get url
+            $fileStmt = $pdo->prepare("SELECT * FROM `client_files` WHERE `id` = ?");
+            $fileStmt->execute([$fileId]);
+            $file = $fileStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$file) {
+                http_response_code(404);
+                echo json_encode(["message" => "File not found."]);
+                exit();
+            }
+
+            // Delete physical file
+            $filePath = '../' . $file['file_url'];
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            // Delete record
+            $delStmt = $pdo->prepare("DELETE FROM `client_files` WHERE `id` = ?");
+            $delStmt->execute([$fileId]);
+
+            // Add system logger notification
+            $systemMsg = "🔧 System Alert: Document '" . $file['filename'] . "' has been deleted by the Admin.";
+            $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
+            $adminId = $adminStmt->fetchColumn() ?: 1;
+
+            $logStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
+            $logStmt->execute([$adminId, $file['client_id'], $systemMsg]);
+
+            echo json_encode(["success" => true, "message" => "File deleted successfully."]);
+            exit();
+        }
+
+        // Admin Action: Request another document upload
+        if ($action === 'file_request') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $clientId = intval($inputData['client_id']);
+            $category = trim($inputData['category'] ?? 'Specs');
+            $reason = trim($inputData['reason'] ?? 'Please provide updated documentation.');
+
+            if ($clientId <= 0 || empty($reason)) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid parameters for requesting file."]);
+                exit();
+            }
+
+            // Create a pending checklist task for the client
+            $taskTitle = "Upload Requested Document (" . $category . ")";
+            $taskDesc = $reason;
+
+            $insStmt = $pdo->prepare("INSERT INTO `client_tasks` (`client_id`, `title`, `description`, `status`, `action_type`, `due_date`) VALUES (?, ?, ?, 'Pending', 'upload', 'ASAP')");
+            $insStmt->execute([$clientId, $taskTitle, $taskDesc]);
+
+            // Add system log message
+            $systemMsg = "🔧 System Alert: Admin has requested a new document upload (" . $category . "). Reason: " . $reason;
+            $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
+            $adminId = $adminStmt->fetchColumn() ?: 1;
+
+            $logStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
+            $logStmt->execute([$adminId, $clientId, $systemMsg]);
+
+            // Re-calculate project progress
+            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `client_tasks` WHERE `client_id` = ?");
+            $countStmt->execute([$clientId]);
+            $totalTasks = intval($countStmt->fetchColumn());
+
+            $completedStmt = $pdo->prepare("SELECT COUNT(*) FROM `client_tasks` WHERE `client_id` = ? AND `status` = 'Completed'");
+            $completedStmt->execute([$clientId]);
+            $completedTasks = intval($completedStmt->fetchColumn());
+
+            $baseProgress = 15;
+            $progressPercent = $totalTasks > 0 ? ($baseProgress + intval(($completedTasks / $totalTasks) * 85)) : $baseProgress;
+            
+            $projStatus = "Discovery Phase";
+            if ($progressPercent >= 100) $projStatus = "Final Handover";
+            elseif ($progressPercent >= 75) $projStatus = "Staging & Review";
+            elseif ($progressPercent >= 50) $projStatus = "Core Engineering";
+            elseif ($progressPercent >= 30) $projStatus = "Prototype Wireframing";
+
+            $updateProjStmt = $pdo->prepare("UPDATE `client_projects` SET `progress` = ?, `status` = ? WHERE `client_id` = ?");
+            $updateProjStmt->execute([$progressPercent, $projStatus, $clientId]);
+
+            echo json_encode(["success" => true, "message" => "File request generated as a checklist task."]);
+            exit();
+        }
+
         // 5. Client / Admin Action: Toggle invoice Paid / Pending status
         $invoiceId = isset($inputData['invoice_id']) ? intval($inputData['invoice_id']) : 0;
         if ($invoiceId > 0) {
