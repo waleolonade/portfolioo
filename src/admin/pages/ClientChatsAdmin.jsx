@@ -52,6 +52,10 @@ export default function ClientChatsAdmin() {
   const [requestFileCategory, setRequestFileCategory] = useState('Specs');
   const [requestFileReason, setRequestFileReason] = useState('');
 
+  // Admin file upload states
+  const [adminUploadCategory, setAdminUploadCategory] = useState('Specs');
+  const [adminSelectedFile, setAdminSelectedFile] = useState(null);
+
   // Fetch all active client conversations
   const fetchConversations = async () => {
     try {
@@ -415,13 +419,13 @@ export default function ClientChatsAdmin() {
   };
 
   // Admin upload file to client workspace
-  const handleAdminFileUpload = async (e, category = 'Deliverable') => {
-    const uploadedFile = e.target.files[0];
-    if (!uploadedFile || !selectedClientId) return;
+  const handleAdminFileUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminSelectedFile || !selectedClientId) return;
 
     const formData = new FormData();
-    formData.append('file', uploadedFile);
-    formData.append('category', category);
+    formData.append('file', adminSelectedFile);
+    formData.append('category', adminUploadCategory);
     formData.append('client_id', selectedClientId);
 
     try {
@@ -435,6 +439,11 @@ export default function ClientChatsAdmin() {
       });
 
       if (res.ok) {
+        setAdminSelectedFile(null);
+        // Reset file input element visually
+        const fileInput = document.getElementById('admin_file_input');
+        if (fileInput) fileInput.value = '';
+        
         await fetchClientProjectData(selectedClientId);
         await fetchClientChat(selectedClientId);
       } else {
@@ -967,16 +976,6 @@ export default function ClientChatsAdmin() {
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <h5 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Client Documents</h5>
-                        
-                        <label className="btn btn-outline" style={{ padding: '2px 8px', fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>
-                          <Upload size={12} /> Upload File
-                          <input 
-                            type="file" 
-                            onChange={(e) => handleAdminFileUpload(e, 'Deliverable')} 
-                            style={{ display: 'none' }} 
-                            disabled={loading}
-                          />
-                        </label>
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1028,6 +1027,38 @@ export default function ClientChatsAdmin() {
                         )}
                       </div>
                     </div>
+
+                    {/* Admin Document Uploader Form */}
+                    <form onSubmit={handleAdminFileUploadSubmit} style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <h6 style={{ fontSize: '0.8rem', fontWeight: 700, margin: 0 }}>Upload Document & Publish Asset</h6>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Choose Category</label>
+                          <select value={adminUploadCategory} onChange={(e) => setAdminUploadCategory(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }}>
+                            <option value="Specs">Specs</option>
+                            <option value="API Docs">API Docs</option>
+                            <option value="Contracts">Contracts</option>
+                            <option value="AI Analysis">AI Analysis</option>
+                            <option value="Deliverable">Deliverable</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Select File</label>
+                          <input 
+                            id="admin_file_input"
+                            type="file" 
+                            onChange={(e) => setAdminSelectedFile(e.target.files[0])} 
+                            className="form-control" 
+                            style={{ width: '100%', padding: '3px', fontSize: '0.75rem' }} 
+                            required 
+                          />
+                        </div>
+                      </div>
+                      <button type="submit" className="btn btn-primary" style={{ padding: '6px', fontSize: '0.75rem', marginTop: '4px' }} disabled={loading}>
+                        {loading ? 'Uploading...' : 'Upload & Publish Asset'}
+                      </button>
+                    </form>
 
                     {/* Request New Document Form */}
                     <form onSubmit={handleRequestFile} style={{ padding: '12px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
