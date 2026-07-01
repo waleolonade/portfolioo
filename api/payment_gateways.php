@@ -14,8 +14,17 @@ $method = $_SERVER['REQUEST_METHOD'];
 // ─── GET: Return enabled gateways with public keys only (for client-facing checkout) ───
 if ($method === 'GET') {
     try {
-        $stmt = $pdo->query("SELECT `id`, `gateway_name`, `display_name`, `public_key`, `is_enabled`, `is_live_mode` FROM `payment_gateways` WHERE `is_enabled` = 1 AND `public_key` != ''");
+        $stmt = $pdo->query("SELECT `id`, `gateway_name`, `display_name`, `public_key`, `is_enabled`, `is_live_mode` FROM `payment_gateways` WHERE `is_enabled` = 1");
         $gateways = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Mark each gateway as configured or not (frontend uses this for UX only)
+        foreach ($gateways as &$gw) {
+            $gw['is_configured'] = !empty($gw['public_key']) ? 1 : 0;
+            // Never expose public_key value in list — frontend only needs is_configured flag
+            // public_key is provided during payment initialization, not here
+            unset($gw['public_key']);
+        }
+
         echo json_encode(["success" => true, "gateways" => $gateways]);
     } catch (Exception $e) {
         http_response_code(500);
