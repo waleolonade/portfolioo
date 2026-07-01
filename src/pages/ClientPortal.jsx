@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ClientAuth from './ClientAuth';
+import PaymentModal from '../components/PaymentModal';
 import { 
   FolderOpen, DollarSign, Download, MessageSquare, Send, 
   FileText, CheckCircle2, Circle, LogOut, ArrowRight, Clock, 
@@ -242,9 +243,12 @@ export default function ClientPortal() {
     setShowPaymentModal(true);
   };
 
-  // â”€â”€â”€ Handle Gateway Payment â”€â”€â”€
-  const handleGatewayPayment = async () => {
-    if (!selectedGateway || !paymentInvoice) return;
+  // ─── Handle Gateway Payment ───
+  const handleGatewayPayment = async (gatewayName) => {
+    // Accept explicit gatewayName from new PaymentModal component,
+    // or fall back to selectedGateway state for backwards compatibility
+    const activeGateway = gatewayName || selectedGateway;
+    if (!activeGateway || !paymentInvoice) return;
     setPaymentLoading(true);
 
     try {
@@ -257,7 +261,7 @@ export default function ClientPortal() {
         },
         body: JSON.stringify({
           invoice_id: paymentInvoice.id,
-          gateway: selectedGateway
+          gateway: activeGateway
         })
       });
       const initData = await initRes.json();
@@ -274,7 +278,7 @@ export default function ClientPortal() {
           const vRes = await fetch(`${API_BASE_URL}/payment_verify.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ reference: ref, gateway: selectedGateway, transaction_id: initData.transaction_id, ...extra })
+            body: JSON.stringify({ reference: ref, gateway: activeGateway, transaction_id: initData.transaction_id, ...extra })
           });
           const vData = await vRes.json();
           if (vData.success) {
@@ -291,7 +295,7 @@ export default function ClientPortal() {
         }
       };
 
-      switch (selectedGateway) {
+      switch (activeGateway) {
         case 'paystack': {
           if (typeof window.PaystackPop === 'undefined') {
             alert('Paystack script is still loading. Please try again in a moment.');
@@ -1008,287 +1012,20 @@ export default function ClientPortal() {
         }
       `}</style>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           PAYMENT GATEWAY â€” FULL-SCREEN SELECTION PAGE
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      {showPaymentModal && (() => {
-        const GW_META = {
-          paystack: {
-            color: '#00C3F7', darkColor: '#0A6F96',
-            gradient: 'linear-gradient(135deg, #00C3F7 0%, #0A6F96 100%)',
-            icon: 'ðŸ’³', name: 'Paystack',
-            tagline: 'Cards, Bank Transfer, USSD',
-            region: 'ðŸ‡³ðŸ‡¬ Best for Nigeria',
-            regionColor: '#16a34a',
-            methods: ['Debit/Credit Card', 'Bank Transfer', 'USSD', 'Mobile Money'],
-            methodIcons: ['ðŸ’³', 'ðŸ¦', 'ðŸ“±', 'ðŸ“²']
-          },
-          flutterwave: {
-            color: '#F5A623', darkColor: '#E8720C',
-            gradient: 'linear-gradient(135deg, #F5A623 0%, #E8720C 100%)',
-            icon: 'ðŸ¦‹', name: 'Flutterwave',
-            tagline: 'Cards, Mobile Money, Bank',
-            region: 'ðŸŒ Best for Africa',
-            regionColor: '#ca8a04',
-            methods: ['Visa / Mastercard', 'Mobile Money', 'Bank Transfer', 'USSD'],
-            methodIcons: ['ðŸ’³', 'ðŸ“²', 'ðŸ¦', 'ðŸ“±']
-          },
-          stripe: {
-            color: '#635BFF', darkColor: '#4C3FD4',
-            gradient: 'linear-gradient(135deg, #635BFF 0%, #4C3FD4 100%)',
-            icon: 'ðŸ’Ž', name: 'Stripe',
-            tagline: 'Cards, Apple Pay, Google Pay',
-            region: 'ðŸŒ Best for International',
-            regionColor: '#3b82f6',
-            methods: ['Visa / Mastercard', 'Apple Pay', 'Google Pay', 'SEPA Debit'],
-            methodIcons: ['ðŸ’³', '', 'ðŸ”—', 'ðŸ›ï¸']
-          },
-          monnify: {
-            color: '#0066F5', darkColor: '#003D91',
-            gradient: 'linear-gradient(135deg, #0066F5 0%, #003D91 100%)',
-            icon: 'ðŸ¦', name: 'Monnify',
-            tagline: 'Bank Transfer, Virtual Accounts',
-            region: 'ðŸ‡³ðŸ‡¬ Bank Transfer Specialist',
-            regionColor: '#0066F5',
-            methods: ['Bank Transfer', 'Virtual Account', 'Card', 'USSD'],
-            methodIcons: ['ðŸ¦', 'ðŸ§', 'ðŸ’³', 'ðŸ“±']
-          }
-        };
-
-        const amountDue = paymentInvoice
-          ? parseFloat(paymentInvoice.balance_due > 0 ? paymentInvoice.balance_due : paymentInvoice.amount)
-          : 0;
-        const currencySymbol = paymentInvoice?.currency || '$';
-
-        return (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
-            backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '16px', overflowY: 'auto'
-          }}>
-            <div style={{
-              width: '100%', maxWidth: '780px',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: '20px', overflow: 'hidden',
-              boxShadow: '0 40px 80px -12px rgba(0,0,0,0.6)',
-              border: '1px solid var(--border)'
-            }}>
-
-              {/* â”€â”€ Header Bar â”€â”€ */}
-              <div style={{
-                background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)',
-                padding: '28px 36px', position: 'relative', color: '#fff'
-              }}>
-                <button
-                  onClick={() => { setShowPaymentModal(false); setSelectedGateway(null); }}
-                  style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', transition: 'background 0.2s' }}
-                  onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.25)'}
-                  onMouseLeave={e => e.target.style.background = 'rgba(255,255,255,0.15)'}
-                >
-                  <X size={18} />
-                </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CreditCard size={24} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>Secure Payment</h3>
-                    <p style={{ fontSize: '0.8rem', opacity: 0.75, margin: 0 }}>Powered by industry-leading payment providers</p>
-                  </div>
-                </div>
-
-                {/* Invoice summary bar */}
-                {paymentInvoice && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px',
-                    background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '14px 18px'
-                  }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.72rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Invoice Reference</p>
-                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{paymentInvoice.invoice_code}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, fontSize: '0.72rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amount Due</p>
-                      <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: '#fbbf24' }}>
-                        {currencySymbol}{amountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* â”€â”€ Body â”€â”€ */}
-              <div style={{ padding: '28px 36px' }}>
-                <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                  Choose your preferred payment method:
-                </p>
-
-                {/* Gateway Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-                  {paymentGateways.length === 0 ? (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '12px' }}>ðŸ”§</div>
-                      <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>No payment methods available</p>
-                      <p style={{ fontSize: '0.8rem' }}>Please contact your project manager to configure payment options.</p>
-                    </div>
-                  ) : (
-                    paymentGateways.map((gw) => {
-                      const meta = GW_META[gw.gateway_name] || { color: '#888', gradient: '#888', icon: 'ðŸ’³', name: gw.display_name, tagline: '', region: '', methods: [], methodIcons: [] };
-                      const isSelected = selectedGateway === gw.gateway_name;
-                      const isConfigured = gw.is_configured === 1;
-
-                      return (
-                        <button
-                          key={gw.gateway_name}
-                          onClick={() => isConfigured && setSelectedGateway(gw.gateway_name)}
-                          style={{
-                            display: 'flex', flexDirection: 'column', padding: '0',
-                            border: isSelected ? `2px solid ${meta.color}` : `1px solid var(--border)`,
-                            borderRadius: '14px', cursor: isConfigured ? 'pointer' : 'default',
-                            backgroundColor: 'var(--bg-primary)', textAlign: 'left', width: '100%',
-                            overflow: 'hidden', transition: 'all 0.25s ease',
-                            opacity: isConfigured ? 1 : 0.55,
-                            boxShadow: isSelected ? `0 0 0 3px ${meta.color}22, 0 8px 24px ${meta.color}22` : 'none',
-                            transform: isSelected ? 'translateY(-2px)' : 'none'
-                          }}
-                        >
-                          {/* Card top stripe */}
-                          <div style={{ background: meta.gradient, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <span style={{ fontSize: '1.8rem', lineHeight: 1 }}>{meta.icon}</span>
-                              <div>
-                                <strong style={{ fontSize: '1.05rem', color: '#fff', display: 'block', fontWeight: 800 }}>{meta.name}</strong>
-                                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)' }}>{meta.tagline}</span>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                              {/* Selection indicator */}
-                              <div style={{
-                                width: '22px', height: '22px', borderRadius: '50%',
-                                border: isSelected ? '2px solid #fff' : '2px solid rgba(255,255,255,0.4)',
-                                background: isSelected ? '#fff' : 'transparent',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s'
-                              }}>
-                                {isSelected && <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: meta.color }} />}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Card body */}
-                          <div style={{ padding: '14px 20px' }}>
-                            {/* Region badge */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                              <span style={{
-                                fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
-                                backgroundColor: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}33`
-                              }}>
-                                {meta.region}
-                              </span>
-                              {!isConfigured && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', backgroundColor: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
-                                  ðŸ”§ Keys not configured
-                                </span>
-                              )}
-                              {isConfigured && gw.is_live_mode === 1 && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                                  ðŸ”´ LIVE
-                                </span>
-                              )}
-                              {isConfigured && gw.is_live_mode !== 1 && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px', backgroundColor: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)' }}>
-                                  âœ… Sandbox
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Payment method icons */}
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                              {meta.methods.map((method, i) => (
-                                <span key={i} style={{
-                                  fontSize: '0.65rem', padding: '3px 8px', borderRadius: '6px',
-                                  backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)',
-                                  display: 'flex', alignItems: 'center', gap: '4px'
-                                }}>
-                                  <span style={{ fontSize: '0.8rem' }}>{meta.methodIcons[i]}</span> {method}
-                                </span>
-                              ))}
-                            </div>
-
-                            {/* Not configured note */}
-                            {!isConfigured && (
-                              <p style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: '10px', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <ShieldCheck size={12} /> Admin must add API keys to activate this gateway
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* â”€â”€ Pay Button â”€â”€ */}
-                {paymentGateways.length > 0 && (() => {
-                  const selMeta = selectedGateway ? GW_META[selectedGateway] : null;
-                  const selGw = paymentGateways.find(g => g.gateway_name === selectedGateway);
-                  const canPay = selectedGateway && selGw?.is_configured === 1;
-
-                  return (
-                    <div>
-                      {/* Selected gateway not configured warning */}
-                      {selectedGateway && selGw?.is_configured !== 1 && (
-                        <div style={{ padding: '12px 16px', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '10px', marginBottom: '14px', fontSize: '0.82rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-                          <span><strong>{selMeta?.name}</strong> is not yet configured by the admin. Please select a different gateway or contact your project manager.</span>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={handleGatewayPayment}
-                        disabled={!canPay || paymentLoading}
-                        style={{
-                          width: '100%', padding: '18px 24px', fontSize: '1.05rem', fontWeight: 800,
-                          background: canPay && selMeta ? selMeta.gradient : 'var(--bg-tertiary)',
-                          border: 'none', borderRadius: '12px', color: canPay ? '#fff' : 'var(--text-muted)',
-                          cursor: canPay && !paymentLoading ? 'pointer' : 'not-allowed',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                          transition: 'all 0.25s ease',
-                          boxShadow: canPay && selMeta ? `0 8px 24px ${selMeta.color}44` : 'none'
-                        }}
-                      >
-                        {paymentLoading ? (
-                          <>
-                            <span style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite', display: 'inline-block' }} />
-                            Connecting to {selMeta?.name}...
-                          </>
-                        ) : canPay ? (
-                          <>
-                            <ShieldCheck size={20} />
-                            Pay {currencySymbol}{amountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })} with {selMeta?.name}
-                          </>
-                        ) : (
-                          <>Select a payment method above</>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* â”€â”€ Security Footer â”€â”€ */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                  <ShieldCheck size={14} style={{ color: '#10b981' }} />
-                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    256-bit SSL encrypted Â· Your payment info is never stored on our servers Â· PCI DSS Compliant
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* PAYMENT MODAL */}
+      {showPaymentModal && paymentInvoice && (
+        <PaymentModal
+          invoice={paymentInvoice}
+          gateways={paymentGateways}
+          loading={paymentLoading}
+          onClose={() => { setShowPaymentModal(false); setSelectedGateway(null); }}
+          onPay={(gatewayName) => {
+            setSelectedGateway(gatewayName);
+            handleGatewayPayment(gatewayName);
+          }}
+        />
+      )}
     </div>
   );
 }
+
