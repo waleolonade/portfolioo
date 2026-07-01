@@ -5,7 +5,7 @@ import ClientAuth from './ClientAuth';
 import { 
   FolderOpen, DollarSign, Download, MessageSquare, Send, 
   FileText, CheckCircle2, Circle, LogOut, ArrowRight, Clock, 
-  Sparkles, Upload, ShieldCheck, RefreshCw
+  Sparkles, Upload, ShieldCheck, RefreshCw, CreditCard, X, Loader
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -27,6 +27,14 @@ export default function ClientPortal() {
   const [loading, setLoading] = useState(false);
   const [uploadingTaskId, setUploadingTaskId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Payment Gateway Modal States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentGateways, setPaymentGateways] = useState([]);
+  const [selectedGateway, setSelectedGateway] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentTaskId, setPaymentTaskId] = useState(null);
+  const [paymentInvoice, setPaymentInvoice] = useState(null);
 
   const chatContainerRef = useRef(null);
   const isFirstLoadRef = useRef(true);
@@ -99,6 +107,24 @@ export default function ClientPortal() {
       return () => clearInterval(interval);
     }
   }, [token]);
+
+  // Load payment gateway CDN scripts
+  useEffect(() => {
+    const scripts = [
+      { id: 'paystack-inline', src: 'https://js.paystack.co/v2/inline.js' },
+      { id: 'flutterwave-inline', src: 'https://checkout.flutterwave.com/v3.js' },
+      { id: 'monnify-inline', src: 'https://sdk.monnify.com/plugin/monnify.js' }
+    ];
+    scripts.forEach(({ id, src }) => {
+      if (!document.getElementById(id)) {
+        const s = document.createElement('script');
+        s.id = id;
+        s.src = src;
+        s.async = true;
+        document.head.appendChild(s);
+      }
+    });
+  }, []);
 
   // Reset first load flag on tab switch
   useEffect(() => {
@@ -187,6 +213,183 @@ export default function ClientPortal() {
       console.error('File upload error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── Open Payment Gateway Selector Modal ───
+  const openPaymentModal = async (taskId) => {
+    setPaymentTaskId(taskId);
+    setSelectedGateway(null);
+    setPaymentLoading(false);
+
+    // Find the first pending invoice for this client
+    const pendingInvoice = invoices.find(inv => inv.status === 'Pending');
+    setPaymentInvoice(pendingInvoice || null);
+
+    // Fetch enabled gateways
+    try {
+      const res = await fetch(`${API_BASE_URL}/payment_gateways.php`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPaymentGateways(data.gateways);
+      }
+    } catch (err) {
+      console.error('Failed to fetch gateways:', err);
+    }
+
+    setShowPaymentModal(true);
+  };
+
+  // ─── Handle Gateway Payment ───
+  const handleGatewayPayment = async () => {
+    if (!selectedGateway || !paymentInvoice) return;
+    setPaymentLoading(true);
+
+    try {
+      // 1. Initialize payment on backend
+      const initRes = await fetch(`${API_BASE_URL}/payment_init.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          invoice_id: paymentInvoice.id,
+          gateway: selectedGateway
+        })
+      });
+      const initData = await initRes.json();
+
+      if (!initRes.ok || !initData.success) {
+        alert(initData.message || initData.gateway_error || 'Payment initialization failed.');
+        setPaymentLoading(false);
+        return;
+      }
+
+      // 2. Launch gateway-specific checkout
+      const verifyPayment = async (ref, extra = {}) => {
+        try {
+          const vRes = await fetch(`${API_BASE_URL}/payment_verify.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ reference: ref, gateway: selectedGateway, transaction_id: initData.transaction_id, ...extra })
+          });
+          const vData = await vRes.json();
+          if (vData.success) {
+            setShowPaymentModal(false);
+            setSelectedGateway(null);
+            await fetchData();
+            await fetchMessages();
+            alert('✅ Payment successful! Your invoice has been marked as Paid.');
+          } else {
+            alert(vData.message || 'Payment verification failed.');
+          }
+        } catch (err) {
+          console.error('Verification error:', err);
+        }
+      };
+
+      switch (selectedGateway) {
+        case 'paystack': {
+          if (typeof window.PaystackPop === 'undefined') {
+            alert('Paystack script is still loading. Please try again in a moment.');
+            break;
+          }
+          const paystack = new window.PaystackPop();
+          paystack.newTransaction({
+            key: initData.public_key,
+            email: initData.client_email,
+            amount: Math.round(initData.amount * 100),
+            currency: initData.currency,
+            ref: initData.reference,
+            onSuccess: (transaction) => {
+              verifyPayment(transaction.reference || initData.reference);
+            },
+            onCancel: () => {
+              console.log('Paystack payment cancelled');
+            }
+          });
+          break;
+        }
+
+        case 'flutterwave': {
+          if (typeof window.FlutterwaveCheckout === 'undefined') {
+            alert('Flutterwave script is still loading. Please try again in a moment.');
+            break;
+          }
+          window.FlutterwaveCheckout({
+            public_key: initData.public_key,
+            tx_ref: initData.tx_ref,
+            amount: initData.amount,
+            currency: initData.currency,
+            payment_options: initData.payment_options || 'card,banktransfer,ussd',
+            customer: {
+              email: initData.client_email,
+              name: initData.client_name
+            },
+            customizations: initData.customizations || {
+              title: 'Brainfeels Tech',
+              description: `Payment for ${initData.invoice_code}`
+            },
+            callback: (response) => {
+              if (response.status === 'successful' || response.status === 'completed') {
+                verifyPayment(initData.reference, { flw_transaction_id: response.transaction_id });
+              }
+              if (typeof window.closePaymentModal === 'function') window.closePaymentModal();
+            },
+            onclose: () => {
+              console.log('Flutterwave modal closed');
+            }
+          });
+          break;
+        }
+
+        case 'stripe': {
+          // Stripe uses redirect to hosted checkout
+          if (initData.checkout_url) {
+            window.location.href = initData.checkout_url;
+          } else {
+            alert(initData.gateway_error || 'Failed to create Stripe checkout session.');
+          }
+          break;
+        }
+
+        case 'monnify': {
+          if (typeof window.MonnifySDK === 'undefined') {
+            alert('Monnify script is still loading. Please try again in a moment.');
+            break;
+          }
+          window.MonnifySDK.initialize({
+            amount: initData.amount,
+            currency: initData.currency || 'NGN',
+            reference: initData.reference,
+            customerName: initData.client_name,
+            customerEmail: initData.client_email,
+            apiKey: initData.public_key,
+            contractCode: initData.contract_code,
+            paymentDescription: `Payment for ${initData.invoice_code}`,
+            onComplete: (response) => {
+              if (response.status === 'SUCCESS') {
+                verifyPayment(initData.reference);
+              }
+            },
+            onClose: () => {
+              console.log('Monnify modal closed');
+            }
+          });
+          break;
+        }
+
+        default:
+          alert('Unsupported gateway.');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      alert('An error occurred while processing your payment.');
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -469,12 +672,12 @@ export default function ClientPortal() {
                                 {task.action_type === 'payment' && (
                                   <div>
                                     <button
-                                      onClick={() => handleExecuteTask(task.id, 'payment')}
+                                      onClick={() => openPaymentModal(task.id)}
                                       disabled={uploadingTaskId === task.id || loading}
                                       className="btn btn-primary"
-                                      style={{ padding: '6px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                      style={{ padding: '8px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', border: 'none' }}
                                     >
-                                      <DollarSign size={14} /> {uploadingTaskId === task.id ? 'Processing...' : 'Simulate Deposit Payment'}
+                                      <CreditCard size={16} /> {uploadingTaskId === task.id ? 'Processing...' : 'Make Payment'}
                                     </button>
                                   </div>
                                 )}
@@ -804,6 +1007,100 @@ export default function ClientPortal() {
           }
         }
       `}</style>
+
+      {/* ═══════ PAYMENT GATEWAY SELECTOR MODAL ═══════ */}
+      {showPaymentModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="card" style={{ maxWidth: '560px', width: '100%', padding: '0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', maxHeight: '90vh', overflowY: 'auto' }}>
+            {/* Modal Header */}
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', padding: '28px 32px', color: '#fff', position: 'relative' }}>
+              <button onClick={() => { setShowPaymentModal(false); setSelectedGateway(null); }} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                <X size={16} />
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <CreditCard size={28} />
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0 }}>Select Payment Method</h3>
+              </div>
+              {paymentInvoice && (
+                <p style={{ fontSize: '0.85rem', opacity: 0.9, margin: 0 }}>
+                  Invoice {paymentInvoice.invoice_code} — {paymentInvoice.currency || '$'}{parseFloat(paymentInvoice.balance_due > 0 ? paymentInvoice.balance_due : paymentInvoice.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              )}
+            </div>
+
+            {/* Gateway Cards */}
+            <div style={{ padding: '24px 32px' }}>
+              {paymentGateways.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                  <ShieldCheck size={40} style={{ marginBottom: '12px', opacity: 0.4 }} />
+                  <p style={{ fontSize: '0.9rem' }}>No payment gateways are currently enabled.</p>
+                  <p style={{ fontSize: '0.75rem' }}>Please contact the administrator to configure payment methods.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {paymentGateways.map((gw) => {
+                    const themes = {
+                      paystack: { color: '#00C3F7', gradient: 'linear-gradient(135deg, #00C3F7 0%, #0A6F96 100%)', icon: '💳', badge: '🇳🇬 Nigeria' },
+                      flutterwave: { color: '#F5A623', gradient: 'linear-gradient(135deg, #F5A623 0%, #E8720C 100%)', icon: '🦋', badge: '🌍 Africa' },
+                      stripe: { color: '#635BFF', gradient: 'linear-gradient(135deg, #635BFF 0%, #4C3FD4 100%)', icon: '💎', badge: '🌐 International' },
+                      monnify: { color: '#0066F5', gradient: 'linear-gradient(135deg, #0066F5 0%, #003D91 100%)', icon: '🏦', badge: '🇳🇬 Bank Transfer' }
+                    };
+                    const t = themes[gw.gateway_name] || { color: '#888', gradient: '#888', icon: '💳', badge: '' };
+                    const isSelected = selectedGateway === gw.gateway_name;
+                    return (
+                      <button
+                        key={gw.gateway_name}
+                        onClick={() => setSelectedGateway(gw.gateway_name)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px',
+                          border: isSelected ? `2px solid ${t.color}` : '1px solid var(--border)',
+                          borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+                          backgroundColor: isSelected ? `${t.color}11` : 'var(--bg-primary)',
+                          transition: 'all 0.2s ease', width: '100%'
+                        }}
+                      >
+                        <span style={{ fontSize: '2rem', minWidth: '40px', textAlign: 'center' }}>{t.icon}</span>
+                        <div style={{ flex: 1 }}>
+                          <strong style={{ fontSize: '1rem', color: 'var(--text-primary)', display: 'block' }}>{gw.display_name}</strong>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '8px', backgroundColor: `${t.color}15`, color: t.color, fontWeight: 600 }}>{t.badge}</span>
+                        </div>
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: isSelected ? `2px solid ${t.color}` : '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isSelected && <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: t.color }} />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Pay Button */}
+              {paymentGateways.length > 0 && (
+                <button
+                  onClick={handleGatewayPayment}
+                  disabled={!selectedGateway || paymentLoading}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%', padding: '16px', fontSize: '1rem', fontWeight: 700, marginTop: '24px',
+                    background: selectedGateway ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' : 'var(--bg-tertiary)',
+                    border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                    opacity: !selectedGateway ? 0.5 : 1, cursor: !selectedGateway ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {paymentLoading ? (
+                    <><span style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite', display: 'inline-block' }}></span> Initializing Payment...</>
+                  ) : (
+                    <><ShieldCheck size={20} /> Pay Securely{selectedGateway ? ` with ${selectedGateway.charAt(0).toUpperCase() + selectedGateway.slice(1)}` : ''}</>
+                  )}
+                </button>
+              )}
+
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '16px', lineHeight: 1.4 }}>
+                🔒 All transactions are secured with end-to-end encryption. Your payment details are processed directly by the payment provider.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

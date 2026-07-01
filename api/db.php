@@ -60,6 +60,7 @@ try {
         `id` INT AUTO_INCREMENT PRIMARY KEY,
         `username` VARCHAR(50) UNIQUE NOT NULL,
         `password` VARCHAR(255) NOT NULL,
+        `email` VARCHAR(150) DEFAULT NULL,
         `role` VARCHAR(50) NOT NULL DEFAULT 'Super Admin',
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -190,11 +191,11 @@ try {
     $pwdAgent = password_hash('agentpassword', PASSWORD_DEFAULT);
     
     // Insert Role-based Users
-    $userInsert = $pdo->prepare("INSERT INTO `users` (`username`, `password`, `role`) VALUES (?, ?, ?)");
-    $userInsert->execute(['admin', $pwdAdmin, 'Super Admin']);
-    $userInsert->execute(['editor', $pwdEditor, 'Content Editor']);
-    $userInsert->execute(['pm', $pwdPM, 'Project Manager']);
-    $userInsert->execute(['agent', $pwdAgent, 'Support Agent']);
+    $userInsert = $pdo->prepare("INSERT INTO `users` (`username`, `password`, `email`, `role`) VALUES (?, ?, ?, ?)");
+    $userInsert->execute(['admin', $pwdAdmin, 'admin@brainfeels.tech', 'Super Admin']);
+    $userInsert->execute(['editor', $pwdEditor, 'editor@brainfeels.tech', 'Content Editor']);
+    $userInsert->execute(['pm', $pwdPM, 'pm@brainfeels.tech', 'Project Manager']);
+    $userInsert->execute(['agent', $pwdAgent, 'agent@brainfeels.tech', 'Support Agent']);
 
     // Seed the EXACT 8 Services from Brainfeels Tech flyers
     $pdo->exec("INSERT INTO `services` (`name`, `description`, `benefits`, `features`, `icon_name`, `basic_price`, `standard_price`, `premium_price`) VALUES 
@@ -393,6 +394,57 @@ try {
         FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
+    // Payment Gateways Configuration
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `payment_gateways` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `gateway_name` VARCHAR(50) UNIQUE NOT NULL,
+        `display_name` VARCHAR(100) NOT NULL,
+        `public_key` VARCHAR(255) DEFAULT '',
+        `secret_key` VARCHAR(255) DEFAULT '',
+        `callback_url` VARCHAR(255) DEFAULT '',
+        `webhook_secret` VARCHAR(255) DEFAULT '',
+        `is_enabled` TINYINT(1) DEFAULT 0,
+        `is_live_mode` TINYINT(1) DEFAULT 0,
+        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Payment Transactions Ledger
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `payment_transactions` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `client_id` INT NOT NULL,
+        `invoice_id` INT NOT NULL,
+        `gateway` VARCHAR(50) NOT NULL,
+        `reference` VARCHAR(100) NOT NULL,
+        `tx_ref` VARCHAR(100) DEFAULT '',
+        `amount` DECIMAL(12,2) NOT NULL,
+        `currency` VARCHAR(10) DEFAULT 'NGN',
+        `status` VARCHAR(20) NOT NULL DEFAULT 'pending',
+        `gateway_response` LONGTEXT DEFAULT NULL,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`invoice_id`) REFERENCES `client_invoices`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Admin OTP Codes
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `admin_otp_codes` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `user_id` INT NOT NULL,
+        `otp_code` VARCHAR(10) NOT NULL,
+        `purpose` VARCHAR(100) NOT NULL DEFAULT 'gateway_access',
+        `session_token` VARCHAR(255) DEFAULT NULL,
+        `expires_at` DATETIME NOT NULL,
+        `is_used` TINYINT(1) DEFAULT 0,
+        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // Seed default payment gateway placeholders
+    $gwInsert = $pdo->prepare("INSERT IGNORE INTO `payment_gateways` (`gateway_name`, `display_name`) VALUES (?, ?)");
+    $gwInsert->execute(['paystack', 'Paystack']);
+    $gwInsert->execute(['flutterwave', 'Flutterwave']);
+    $gwInsert->execute(['stripe', 'Stripe']);
+    $gwInsert->execute(['monnify', 'Monnify']);
+
     // Add optional columns to client_projects and client_invoices
     try {
         $pdo->exec("ALTER TABLE `client_invoices` ADD `balance_due` DECIMAL(10,2) DEFAULT 0.00;");
@@ -405,6 +457,9 @@ try {
     } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE `client_projects` ADD `feedback_details` TEXT DEFAULT NULL;");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `users` ADD `email` VARCHAR(150) DEFAULT NULL;");
     } catch (Exception $e) {}
 
 } catch (PDOException $e) {

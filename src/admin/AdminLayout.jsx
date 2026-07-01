@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ShieldCheck, LayoutDashboard, Briefcase, MessageSquare, LogOut,
-  FileText, Code, LayoutTemplate
+  FileText, Code, LayoutTemplate, CreditCard
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -81,6 +81,13 @@ export default function AdminLayout() {
           {hasAccess('cms') && (
             <li className={`sidebar-item ${isActive('/admin/cms') ? 'active' : ''}`} onClick={() => navigate('/admin/cms')} style={{ marginTop: '20px' }}>
               <LayoutTemplate size={18} /> Page Builder & CMS
+            </li>
+          )}
+
+          {/* Payment Gateways — Super Admin only */}
+          {role === 'Super Admin' && (
+            <li className={`sidebar-item ${isActive('/admin/payments') ? 'active' : ''}`} onClick={() => navigate('/admin/payments')}>
+              <CreditCard size={18} /> Payment Gateways
             </li>
           )}
 

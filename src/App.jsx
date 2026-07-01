@@ -37,6 +37,7 @@ import LeadsAdmin from './admin/pages/LeadsAdmin';
 import CareersAdmin from './admin/pages/CareersAdmin';
 import PageBuilderCms from './admin/pages/PageBuilderCms';
 import ClientChatsAdmin from './admin/pages/ClientChatsAdmin';
+import PaymentGatewaysAdmin from './admin/pages/PaymentGatewaysAdmin';
 
 
 const SECTION_COMPONENTS = {
@@ -464,6 +465,7 @@ function App() {
             <Route path="leads" element={<LeadsAdmin />} />
             <Route path="chats" element={<ClientChatsAdmin />} />
             <Route path="careers" element={<CareersAdmin />} />
+            <Route path="payments" element={<PaymentGatewaysAdmin />} />
           </Route>
           
           {/* Catch-all redirect to Landing */}
