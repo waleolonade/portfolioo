@@ -24,6 +24,9 @@ export default function PaymentGatewaysAdmin() {
   const [otpError, setOtpError] = useState('');
   const [devOtp, setDevOtp] = useState('');
   const [sessionToken, setSessionToken] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
 
   // Gateway states
   const [gateways, setGateways] = useState([]);
@@ -162,6 +165,32 @@ export default function PaymentGatewaysAdmin() {
     });
   };
 
+  // ─── Update Admin Email ───
+  const handleUpdateEmail = async (e) => {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminEmail.includes('@')) return;
+    setEmailSaving(true);
+    setEmailMessage('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/payment_gateways.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ action: 'update_admin_email', email: adminEmail.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailMessage('✅ Email saved! You can now request your OTP.');
+        setOtpError('');
+      } else {
+        setEmailMessage(data.message || 'Failed to save email.');
+      }
+    } catch (err) {
+      setEmailMessage('Network error saving email.');
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
   // ════════════════════════════════════════════════════════
   // RENDER: OTP SECURITY GATE
   // ════════════════════════════════════════════════════════
@@ -195,6 +224,28 @@ export default function PaymentGatewaysAdmin() {
 
           {otpStep === 'locked' && (
             <div>
+              {/* Email Setup Section */}
+              <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', textAlign: 'left' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>📧 Admin Notification Email</label>
+                <form onSubmit={handleUpdateEmail} style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="form-control"
+                    style={{ fontSize: '0.85rem', padding: '8px 12px', flex: 1 }}
+                  />
+                  <button type="submit" disabled={emailSaving || !adminEmail} className="btn btn-outline" style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                    {emailSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </form>
+                {emailMessage && (
+                  <p style={{ fontSize: '0.75rem', color: emailMessage.startsWith('✅') ? '#10b981' : '#ef4444', marginTop: '6px', marginBottom: 0 }}>{emailMessage}</p>
+                )}
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '6px', marginBottom: 0 }}>OTP will be sent here. Required for first-time access.</p>
+              </div>
+
               <button
                 onClick={handleSendOtp}
                 disabled={otpLoading}

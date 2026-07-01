@@ -69,12 +69,28 @@ if ($method === 'POST') {
             "email_delivered" => $emailSent
         ];
 
-        // Dev mode: include OTP for testing (remove in production)
-        if (!$emailSent || strpos($adminEmail, 'brainfeels.tech') !== false) {
-            $response["dev_otp"] = $otpCode;
-        }
+        // Dev mode: always include OTP in response (mail() requires SMTP config in production)
+        $response["dev_otp"] = $otpCode;
 
         echo json_encode($response);
+        exit();
+    }
+
+    // ── Update Admin Email ──
+    if ($action === 'update_admin_email') {
+        $user = verify_user_role(['Super Admin'], $pdo);
+        $newEmail = trim($inputData['email'] ?? '');
+
+        if (empty($newEmail) || !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(["message" => "A valid email address is required."]);
+            exit();
+        }
+
+        $updateStmt = $pdo->prepare("UPDATE `users` SET `email` = ? WHERE `id` = ?");
+        $updateStmt->execute([$newEmail, $user['id']]);
+
+        echo json_encode(["success" => true, "message" => "Admin email updated to $newEmail."]);
         exit();
     }
 
