@@ -162,7 +162,7 @@ export const payWithStripe = async (initData) => {
  */
 export const payWithMonnify = async (initData, verifyCallback) => {
   try {
-    await loadScript('https://sdk.monnify.com/v1/sdk.js');
+    await loadScript('https://sdk.monnify.com/plugin/monnify.js');
     if (typeof window.MonnifySDK === 'undefined') {
       throw new Error('Monnify SDK failed to load properly.');
     }
