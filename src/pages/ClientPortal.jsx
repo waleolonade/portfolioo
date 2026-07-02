@@ -226,7 +226,11 @@ export default function ClientPortal() {
 
     // Find the first pending invoice for this client
     const pendingInvoice = invoices.find(inv => inv.status === 'Pending');
-    setPaymentInvoice(pendingInvoice || null);
+    if (!pendingInvoice) {
+      alert('ℹ️ There are no pending setup or milestone invoices at this time.');
+      return;
+    }
+    setPaymentInvoice(pendingInvoice);
 
     // Fetch enabled gateways
     try {
