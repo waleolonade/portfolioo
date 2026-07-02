@@ -300,7 +300,7 @@ export default function ClientPortal() {
         }
       };
 
-      if (initData.is_demo) {
+      if (initData.is_demo && activeGateway !== 'paystack') {
         // Automatically simulate a successful payment verification
         await verifyPayment(initData.reference);
         return;

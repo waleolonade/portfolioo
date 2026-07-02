@@ -88,6 +88,14 @@ class PaymentService {
                 $upStmt = $this->pdo->prepare("UPDATE `payment_transactions` SET `gateway` = ?, `reference` = ? WHERE `id` = ?");
                 $upStmt->execute([$currentGatewayName, $demoReference, $transactionId]);
 
+                $fallbackPublicKeys = [
+                    'paystack' => 'pk_test_a0d8bb568a0f8b1b11b7a2d4838dbf9c8b82dfc7',
+                    'flutterwave' => 'FLWPUBK_TEST-5f6ab585f81014e7a68e0d3c063f25c7-X',
+                    'stripe' => 'pk_test_TYooMQauvdEDq54NiTphI7jx',
+                    'monnify' => 'MK_TEST_SAF7KVGBDX'
+                ];
+                $pubKey = $gw['public_key'] ?: ($fallbackPublicKeys[$currentGatewayName] ?? '');
+
                 return [
                     "success" => true,
                     "transaction_id" => $transactionId,
@@ -99,6 +107,8 @@ class PaymentService {
                     "client_name" => $client['username'],
                     "gateway" => $currentGatewayName,
                     "invoice_code" => $invoice['invoice_code'],
+                    "public_key" => $pubKey,
+                    "contract_code" => $gw['webhook_secret'] ?: '1234567890',
                     "is_demo" => true,
                     "gateway_switched" => ($currentGatewayName !== $preferredGateway)
                 ];

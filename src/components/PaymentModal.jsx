@@ -852,7 +852,7 @@ export default function PaymentModal({
                       loading={loading}
                       onSelect={(gatewayName) => {
                         setSelected(gatewayName);
-                        setStep('sandbox_terminal');
+                        onPay(gatewayName);
                       }}
                     />
                   );
