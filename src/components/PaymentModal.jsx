@@ -255,7 +255,15 @@ export default function PaymentModal({
   loading,
 }) {
   const [selected, setSelected] = useState(null);
-  const [step, setStep] = useState('select'); // 'select' | 'confirm'
+  const [step, setStep] = useState('select'); // 'select' | 'confirm' | 'sandbox_terminal'
+
+  // Sandbox checkout states
+  const [sandboxMethod, setSandboxMethod] = useState('card');
+  const [selectedBank, setSelectedBank] = useState('gtbank');
+  const [cardNumber, setCardNumber] = useState('4000 1234 5678 9010');
+  const [cardExpiry, setCardExpiry] = useState('12/29');
+  const [cardCvv, setCardCvv] = useState('123');
+  const [cardName, setCardName] = useState(invoice?.client_name || 'Project Client');
 
   // Close on Escape key
   const handleKeyDown = useCallback((e) => {
@@ -286,6 +294,366 @@ export default function PaymentModal({
     if (!canProceed || loading) return;
     onPay(selected);
   };
+
+  if (step === 'sandbox_terminal') {
+    return (
+      <>
+        {/* CSS-only animations */}
+        <style>{`
+          @keyframes pm-fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          @keyframes pm-slideUp {
+            from { opacity: 0; transform: translateY(32px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes pm-spin {
+            to { transform: rotate(360deg); }
+          }
+          .pm-overlay {
+            animation: pm-fadeIn 0.2s ease;
+          }
+          .pm-card {
+            animation: pm-slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+          .pm-spinner {
+            width: 20px; height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: pm-spin 0.65s linear infinite;
+            display: inline-block;
+            flex-shrink: 0;
+          }
+        `}</style>
+
+        {/* Backdrop */}
+        <div
+          className="pm-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            backgroundColor: 'rgba(11, 15, 25, 0.88)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Modal Card */}
+          <div
+            className="pm-card"
+            style={{
+              width: '100%', maxWidth: '580px',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '20px',
+              border: '1px solid var(--border)',
+              overflow: 'hidden',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(99,102,241,0.06)',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+            {/* HEADER */}
+            <div style={{
+              background: 'linear-gradient(135deg, #059669 0%, #10b981 60%, #0d9488 100%)',
+              padding: '24px 32px',
+              position: 'relative',
+              color: '#fff',
+              flexShrink: 0,
+            }}>
+              <button
+                aria-label="Back to payment methods"
+                disabled={loading}
+                onClick={() => setStep('select')}
+                style={{
+                  all: 'unset',
+                  position: 'absolute', top: '18px', right: '18px',
+                  width: '34px', height: '34px', borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.12)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: loading ? 'not-allowed' : 'pointer', color: '#fff',
+                  transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={e => { if(!loading) e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
+                onMouseLeave={e => { if(!loading) e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+                <div style={{
+                  width: '46px', height: '46px', borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>
+                    Sandbox Terminal
+                  </h2>
+                  <p style={{ fontSize: '0.78rem', opacity: 0.85, margin: '2px 0 0' }}>
+                    Testing Checkout Flow via {selectedMeta?.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Amount display */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'rgba(255,255,255,0.12)',
+                borderRadius: '10px', padding: '10px 16px',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>Amount to Pay:</span>
+                <strong style={{ fontSize: '1.3rem', fontWeight: 900 }}>
+                  {currencySymbol}{formattedAmount}
+                </strong>
+              </div>
+            </div>
+
+            {/* BODY */}
+            <div style={{ padding: '24px 32px 28px', overflowY: 'auto', flexGrow: 1 }}>
+              
+              {/* Sub-method navigation tabs */}
+              <div style={{
+                display: 'flex',
+                borderBottom: '1px solid var(--border)',
+                marginBottom: '20px',
+                gap: '6px',
+                overflowX: 'auto',
+                paddingBottom: '2px'
+              }}>
+                {[
+                  { id: 'card', label: 'ATM Card', icon: CreditCard },
+                  { id: 'transfer', label: 'Bank Transfer', icon: Building2 },
+                  { id: 'ussd', label: 'USSD Code', icon: Smartphone },
+                ].map(tab => {
+                  const TabIcon = tab.icon;
+                  const isTabActive = sandboxMethod === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      disabled={loading}
+                      onClick={() => setSandboxMethod(tab.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '10px 16px', border: 'none', background: 'none',
+                        fontWeight: 700, fontSize: '0.85rem',
+                        color: isTabActive ? 'var(--success)' : 'var(--text-muted)',
+                        borderBottom: isTabActive ? '2.5px solid var(--success)' : '2.5px solid transparent',
+                        cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <TabIcon size={14} />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* TAB CONTENTS */}
+              {sandboxMethod === 'card' && (
+                <div style={{ animation: 'pm-fadeIn 0.2s ease' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                    Simulate a credit/debit card transaction:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Card Number</label>
+                      <input
+                        type="text"
+                        disabled={loading}
+                        value={cardNumber}
+                        onChange={e => setCardNumber(e.target.value)}
+                        className="form-control"
+                        style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Expiry</label>
+                        <input
+                          type="text"
+                          disabled={loading}
+                          value={cardExpiry}
+                          onChange={e => setCardExpiry(e.target.value)}
+                          placeholder="MM/YY"
+                          className="form-control"
+                          style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>CVV</label>
+                        <input
+                          type="password"
+                          disabled={loading}
+                          value={cardCvv}
+                          onChange={e => setCardCvv(e.target.value)}
+                          maxLength={3}
+                          className="form-control"
+                          style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Cardholder Name</label>
+                      <input
+                        type="text"
+                        disabled={loading}
+                        value={cardName}
+                        onChange={e => setCardName(e.target.value)}
+                        className="form-control"
+                        style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {sandboxMethod === 'transfer' && (
+                <div style={{ animation: 'pm-fadeIn 0.2s ease' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                    Simulate a Nigerian bank transfer to a virtual account:
+                  </p>
+                  <div style={{
+                    backgroundColor: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    padding: '16px 20px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 12px', fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Bank Name:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>Mock Sandbox Bank Plc</strong>
+                      
+                      <span style={{ color: 'var(--text-muted)' }}>Account No:</span>
+                      <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '1px' }}>9928374982</strong>
+                      
+                      <span style={{ color: 'var(--text-muted)' }}>Account Name:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>Brainfeels Tech (Simulation)</strong>
+                      
+                      <span style={{ color: 'var(--text-muted)' }}>Amount:</span>
+                      <strong style={{ color: 'var(--success)' }}>{currencySymbol}{formattedAmount}</strong>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    ℹ️ Transfer the exact amount to the virtual account details above. Once completed, click the confirmation button below.
+                  </p>
+                </div>
+              )}
+
+              {sandboxMethod === 'ussd' && (
+                <div style={{ animation: 'pm-fadeIn 0.2s ease' }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                    Simulate dialing a bank USSD string:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Select Bank</label>
+                      <select
+                        disabled={loading}
+                        value={selectedBank}
+                        onChange={e => setSelectedBank(e.target.value)}
+                        className="form-control"
+                        style={{ fontSize: '0.85rem', padding: '10px 12px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                      >
+                        <option value="gtbank">Guaranty Trust Bank (GTB)</option>
+                        <option value="access">Access Bank</option>
+                        <option value="zenith">Zenith Bank</option>
+                        <option value="uba">United Bank for Africa (UBA)</option>
+                      </select>
+                    </div>
+                    
+                    {(() => {
+                      const codes = {
+                        gtbank: { name: 'GTB', code: `*737*2*1*${Math.round(amountDue)}#` },
+                        access: { name: 'Access', code: `*901*2*1*${Math.round(amountDue)}#` },
+                        zenith: { name: 'Zenith', code: `*966*2*1*${Math.round(amountDue)}#` },
+                        uba: { name: 'UBA', code: `*919*2*1*${Math.round(amountDue)}#` },
+                      };
+                      const c = codes[selectedBank] || codes.gtbank;
+                      return (
+                        <div style={{
+                          backgroundColor: 'var(--bg-tertiary)',
+                          border: '1px dashed var(--border)',
+                          borderRadius: '8px',
+                          padding: '16px',
+                          textAlign: 'center'
+                        }}>
+                          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 6px' }}>Dial this code on your mobile device:</p>
+                          <strong style={{ fontSize: '1.35rem', color: 'var(--primary)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{c.code}</strong>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* SIMULATE ACTION BUTTON */}
+              <button
+                onClick={handlePay}
+                disabled={loading}
+                style={{
+                  all: 'unset',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                  width: '100%', marginTop: '28px',
+                  padding: '16px 24px',
+                  boxSizing: 'border-box',
+                  borderRadius: '12px',
+                  fontSize: '1rem', fontWeight: 800,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'var(--transition)',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff',
+                  boxShadow: '0 6px 24px rgba(16,185,129,0.25)',
+                }}
+              >
+                {loading ? (
+                  <>
+                    <span className="pm-spinner" />
+                    Simulating Payment Verification...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={18} strokeWidth={2.5} />
+                    {sandboxMethod === 'card' && 'Confirm Card Payment'}
+                    {sandboxMethod === 'transfer' && 'Confirm Bank Transfer'}
+                    {sandboxMethod === 'ussd' && 'Confirm USSD Code Payment'}
+                  </>
+                )}
+              </button>
+
+              {/* BACK TO METHOD SELECTOR */}
+              <button
+                disabled={loading}
+                onClick={() => setStep('select')}
+                style={{
+                  all: 'unset',
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'center',
+                  marginTop: '16px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Back to payment methods
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
