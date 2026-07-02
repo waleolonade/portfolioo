@@ -96,7 +96,7 @@ class PaymentService {
                 ];
                 $pubKey = $gw['public_key'] ?: ($fallbackPublicKeys[$currentGatewayName] ?? '');
 
-                return [
+                $resData = [
                     "success" => true,
                     "transaction_id" => $transactionId,
                     "reference" => $demoReference,
@@ -112,6 +112,12 @@ class PaymentService {
                     "is_demo" => true,
                     "gateway_switched" => ($currentGatewayName !== $preferredGateway)
                 ];
+
+                if ($currentGatewayName === 'stripe') {
+                    $resData['gateway_error'] = 'Stripe is currently in Sandbox/Demo mode but does not have standard credentials configured. Please configure Stripe keys in your Admin Panel to test Hosted Checkout.';
+                }
+
+                return $resData;
             }
 
             try {
