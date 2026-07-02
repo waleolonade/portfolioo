@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ClientAuth from './ClientAuth';
 import PaymentModal from '../components/PaymentModal';
+import { payWithPaystack, payWithFlutterwave, payWithStripe, payWithMonnify } from '../services/paymentService';
 import { 
   FolderOpen, DollarSign, Download, MessageSquare, Send, 
   FileText, CheckCircle2, Circle, LogOut, ArrowRight, Clock, 
@@ -302,96 +303,18 @@ export default function ClientPortal() {
       }
 
       switch (activeGateway) {
-        case 'paystack': {
-          if (typeof window.PaystackPop === 'undefined') {
-            alert('Paystack script is still loading. Please try again in a moment.');
-            break;
-          }
-          const paystack = new window.PaystackPop();
-          paystack.newTransaction({
-            key: initData.public_key,
-            email: initData.client_email,
-            amount: Math.round(initData.amount * 100),
-            currency: initData.currency,
-            ref: initData.reference,
-            onSuccess: (transaction) => {
-              verifyPayment(transaction.reference || initData.reference);
-            },
-            onCancel: () => {
-              console.log('Paystack payment cancelled');
-            }
-          });
+        case 'paystack':
+          await payWithPaystack(initData, verifyPayment);
           break;
-        }
-
-        case 'flutterwave': {
-          if (typeof window.FlutterwaveCheckout === 'undefined') {
-            alert('Flutterwave script is still loading. Please try again in a moment.');
-            break;
-          }
-          window.FlutterwaveCheckout({
-            public_key: initData.public_key,
-            tx_ref: initData.tx_ref,
-            amount: initData.amount,
-            currency: initData.currency,
-            payment_options: initData.payment_options || 'card,banktransfer,ussd',
-            customer: {
-              email: initData.client_email,
-              name: initData.client_name
-            },
-            customizations: initData.customizations || {
-              title: 'Brainfeels Tech',
-              description: `Payment for ${initData.invoice_code}`
-            },
-            callback: (response) => {
-              if (response.status === 'successful' || response.status === 'completed') {
-                verifyPayment(initData.reference, { flw_transaction_id: response.transaction_id });
-              }
-              if (typeof window.closePaymentModal === 'function') window.closePaymentModal();
-            },
-            onclose: () => {
-              console.log('Flutterwave modal closed');
-            }
-          });
+        case 'flutterwave':
+          await payWithFlutterwave(initData, verifyPayment);
           break;
-        }
-
-        case 'stripe': {
-          // Stripe uses redirect to hosted checkout
-          if (initData.checkout_url) {
-            window.location.href = initData.checkout_url;
-          } else {
-            alert(initData.gateway_error || 'Failed to create Stripe checkout session.');
-          }
+        case 'stripe':
+          await payWithStripe(initData);
           break;
-        }
-
-        case 'monnify': {
-          if (typeof window.MonnifySDK === 'undefined') {
-            alert('Monnify script is still loading. Please try again in a moment.');
-            break;
-          }
-          window.MonnifySDK.initialize({
-            amount: initData.amount,
-            currency: initData.currency || 'NGN',
-            reference: initData.reference,
-            customerName: initData.client_name,
-            customerEmail: initData.client_email,
-            apiKey: initData.public_key,
-            contractCode: initData.contract_code,
-            paymentDescription: `Payment for ${initData.invoice_code}`,
-            onComplete: (response) => {
-              if (response.status === 'SUCCESS') {
-                verifyPayment(initData.reference);
-              }
-            },
-            onClose: () => {
-              console.log('Monnify modal closed');
-            }
-          });
+        case 'monnify':
+          await payWithMonnify(initData, verifyPayment);
           break;
-        }
-
         default:
           alert('Unsupported gateway.');
       }
