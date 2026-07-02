@@ -103,7 +103,7 @@ const GW_REGISTRY = {
 // ─────────────────────────────────────────────────────────────
 // SUB-COMPONENT: Gateway Card
 // ─────────────────────────────────────────────────────────────
-function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, onSelect }) {
+function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, loading, onSelect }) {
   const [hovered, setHovered] = useState(false);
   const active = isSelected || hovered;
 
@@ -112,14 +112,15 @@ function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, onSelect }) {
       role="radio"
       aria-checked={isSelected}
       aria-label={`Pay with ${gwMeta.name}`}
-      onClick={() => onSelect(gateway.gateway_name)}
+      disabled={loading}
+      onClick={() => !loading && onSelect(gateway.gateway_name)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         all: 'unset',
         display: 'block',
         width: '100%',
-        cursor: 'pointer',
+        cursor: loading ? 'not-allowed' : 'pointer',
         borderRadius: 'var(--radius-md)',
         border: isSelected
           ? `2px solid ${gwMeta.brandColor}`
@@ -127,11 +128,11 @@ function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, onSelect }) {
         backgroundColor: 'var(--bg-secondary)',
         overflow: 'hidden',
         transition: 'var(--transition)',
-        opacity: isSelected ? 1 : isConfigured ? 0.95 : 0.7,
-        transform: active ? 'translateY(-3px)' : 'none',
+        opacity: loading ? 0.55 : (isSelected ? 1 : isConfigured ? 0.95 : 0.7),
+        transform: active && !loading ? 'translateY(-3px)' : 'none',
         boxShadow: isSelected
           ? `0 0 0 4px ${gwMeta.brandColor}18, var(--shadow-lg)`
-          : active
+          : (active && !loading)
             ? 'var(--shadow-md)'
             : 'var(--shadow-sm)',
         outline: 'none',
@@ -480,7 +481,11 @@ export default function PaymentModal({
                       gwMeta={meta}
                       isSelected={selected === gw.gateway_name}
                       isConfigured={gw.is_configured === 1}
-                      onSelect={setSelected}
+                      loading={loading}
+                      onSelect={(gatewayName) => {
+                        setSelected(gatewayName);
+                        onPay(gatewayName); // Immediately trigger redirect/checkout on click!
+                      }}
                     />
                   );
                 })}
