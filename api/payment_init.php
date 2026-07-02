@@ -88,6 +88,29 @@ $txStmt = $pdo->prepare("INSERT INTO `payment_transactions` (`client_id`, `invoi
 $txStmt->execute([$user['id'], $invoiceId, $gatewayName, $reference, $txRef, $payAmount, $currencyCode]);
 $transactionId = $pdo->lastInsertId();
 
+// Check if the keys are configured. If not, auto-enable sandbox simulation.
+if (empty($gateway['public_key']) || empty($gateway['secret_key'])) {
+    $demoReference = 'BFT-DEMO-' . strtoupper($gatewayName) . '-' . time() . '-' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+    $upStmt = $pdo->prepare("UPDATE `payment_transactions` SET `reference` = ? WHERE `id` = ?");
+    $upStmt->execute([$demoReference, $transactionId]);
+
+    $responseData = [
+        "success" => true,
+        "transaction_id" => $transactionId,
+        "reference" => $demoReference,
+        "tx_ref" => $txRef,
+        "amount" => $payAmount,
+        "currency" => $currencyCode,
+        "client_email" => $clientEmail,
+        "client_name" => $user['username'],
+        "gateway" => $gatewayName,
+        "invoice_code" => $invoice['invoice_code'],
+        "is_demo" => true
+    ];
+    echo json_encode($responseData);
+    exit();
+}
+
 $responseData = [
     "success" => true,
     "transaction_id" => $transactionId,

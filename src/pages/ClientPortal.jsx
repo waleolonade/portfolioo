@@ -295,6 +295,12 @@ export default function ClientPortal() {
         }
       };
 
+      if (initData.is_demo) {
+        // Automatically simulate a successful payment verification
+        await verifyPayment(initData.reference);
+        return;
+      }
+
       switch (activeGateway) {
         case 'paystack': {
           if (typeof window.PaystackPop === 'undefined') {

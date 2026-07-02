@@ -112,15 +112,14 @@ function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, onSelect }) {
       role="radio"
       aria-checked={isSelected}
       aria-label={`Pay with ${gwMeta.name}`}
-      disabled={!isConfigured}
-      onClick={() => isConfigured && onSelect(gateway.gateway_name)}
+      onClick={() => onSelect(gateway.gateway_name)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         all: 'unset',
         display: 'block',
         width: '100%',
-        cursor: isConfigured ? 'pointer' : 'not-allowed',
+        cursor: 'pointer',
         borderRadius: 'var(--radius-md)',
         border: isSelected
           ? `2px solid ${gwMeta.brandColor}`
@@ -128,11 +127,11 @@ function GatewayCard({ gateway, gwMeta, isSelected, isConfigured, onSelect }) {
         backgroundColor: 'var(--bg-secondary)',
         overflow: 'hidden',
         transition: 'var(--transition)',
-        opacity: isConfigured ? 1 : 0.45,
-        transform: active && isConfigured ? 'translateY(-3px)' : 'none',
+        opacity: isSelected ? 1 : isConfigured ? 0.95 : 0.7,
+        transform: active ? 'translateY(-3px)' : 'none',
         boxShadow: isSelected
           ? `0 0 0 4px ${gwMeta.brandColor}18, var(--shadow-lg)`
-          : active && isConfigured
+          : active
             ? 'var(--shadow-md)'
             : 'var(--shadow-sm)',
         outline: 'none',
@@ -274,7 +273,7 @@ export default function PaymentModal({
 
   const selectedGw = gateways.find(g => g.gateway_name === selected);
   const selectedMeta = selected ? GW_REGISTRY[selected] : null;
-  const canProceed = selected && selectedGw?.is_configured === 1;
+  const canProceed = !!(selected && selectedGw);
 
   const amountDue = invoice
     ? parseFloat(invoice.balance_due > 0 ? invoice.balance_due : invoice.amount)
@@ -488,20 +487,20 @@ export default function PaymentModal({
               </div>
             )}
 
-            {/* ── Unconfigured warning ── */}
+            {/* ── Unconfigured / Sandbox Demo warning ── */}
             {selected && selectedGw?.is_configured !== 1 && (
               <div style={{
                 marginTop: '16px',
                 padding: '12px 16px', borderRadius: '10px',
-                backgroundColor: 'rgba(245,158,11,0.07)',
-                border: '1px solid rgba(245,158,11,0.22)',
+                backgroundColor: 'rgba(16,185,129,0.06)',
+                border: '1px solid rgba(16,185,129,0.22)',
                 display: 'flex', alignItems: 'flex-start', gap: '10px',
-                fontSize: '0.8rem', color: 'var(--accent)',
+                fontSize: '0.8rem', color: 'var(--success)',
               }}>
-                <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
+                <CheckCircle2 size={15} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--success)' }} />
                 <span>
-                  <strong>{selectedMeta?.name}</strong> has no API keys configured.
-                  Please contact your project manager or choose a different payment method.
+                  <strong>{selectedMeta?.name}</strong> is in <strong>Sandbox Demo Mode</strong>.
+                  You can click below to simulate a successful payment and test the automation flow.
                 </span>
               </div>
             )}
@@ -519,55 +518,70 @@ export default function PaymentModal({
             )}
 
             {/* ── Pay Button ── */}
-            {gateways.length > 0 && (
-              <button
-                onClick={handlePay}
-                disabled={!canProceed || loading}
-                aria-label={canProceed ? `Pay ${currencySymbol}${formattedAmount} with ${selectedMeta?.name}` : 'Select a payment method'}
-                style={{
-                  all: 'unset',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  width: '100%', marginTop: '20px',
-                  padding: '16px 24px',
-                  borderRadius: '12px',
-                  fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.1px',
-                  cursor: canProceed && !loading ? 'pointer' : 'not-allowed',
-                  transition: 'var(--transition)',
-                  background: canProceed && selectedMeta
+            {gateways.length > 0 && (() => {
+              const isConfigured = selectedGw?.is_configured === 1;
+              const buttonBg = canProceed
+                ? (isConfigured && selectedMeta
                     ? selectedMeta.gradient
-                    : 'var(--bg-tertiary)',
-                  color: canProceed ? '#fff' : 'var(--text-muted)',
-                  boxShadow: canProceed && selectedMeta
+                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)')
+                : 'var(--bg-tertiary)';
+
+              const buttonShadow = canProceed
+                ? (isConfigured && selectedMeta
                     ? `0 6px 24px ${selectedMeta.brandColor}44, 0 2px 6px rgba(0,0,0,0.12)`
-                    : 'none',
-                  transform: canProceed && !loading ? 'translateY(0)' : 'none',
-                }}
-                onMouseEnter={e => {
-                  if (canProceed && !loading) e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {loading ? (
-                  <>
-                    <span className="pm-spinner" />
-                    Connecting to {selectedMeta?.name}…
-                  </>
-                ) : canProceed ? (
-                  <>
-                    <ShieldCheck size={18} strokeWidth={2.5} />
-                    Pay {currencySymbol}{formattedAmount} with {selectedMeta?.name}
-                    <ArrowRight size={16} strokeWidth={2.5} style={{ marginLeft: '2px' }} />
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={18} />
-                    Select a payment method above
-                  </>
-                )}
-              </button>
-            )}
+                    : '0 6px 24px rgba(16,185,129,0.22), 0 2px 6px rgba(0,0,0,0.12)')
+                : 'none';
+
+              return (
+                <button
+                  onClick={handlePay}
+                  disabled={!canProceed || loading}
+                  aria-label={canProceed ? (isConfigured ? `Pay ${currencySymbol}${formattedAmount} with ${selectedMeta?.name}` : 'Simulate sandbox payment') : 'Select a payment method'}
+                  style={{
+                    all: 'unset',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                    width: '100%', marginTop: '20px',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.1px',
+                    cursor: canProceed && !loading ? 'pointer' : 'not-allowed',
+                    transition: 'var(--transition)',
+                    background: buttonBg,
+                    color: canProceed ? '#fff' : 'var(--text-muted)',
+                    boxShadow: buttonShadow,
+                    transform: canProceed && !loading ? 'translateY(0)' : 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (canProceed && !loading) e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span className="pm-spinner" />
+                      Connecting to {selectedMeta?.name}…
+                    </>
+                  ) : canProceed ? (
+                    <>
+                      <ShieldCheck size={18} strokeWidth={2.5} />
+                      {isConfigured ? (
+                        <>Pay {currencySymbol}{formattedAmount} with {selectedMeta?.name}</>
+                      ) : (
+                        <>Simulate Payment (Sandbox Demo)</>
+                      )}
+                      <ArrowRight size={16} strokeWidth={2.5} style={{ marginLeft: '2px' }} />
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard size={18} />
+                      Select a payment method above
+                    </>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* ── Security Trust Bar ── */}
             <div style={{
