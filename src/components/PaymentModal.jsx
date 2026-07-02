@@ -852,7 +852,7 @@ export default function PaymentModal({
                       loading={loading}
                       onSelect={(gatewayName) => {
                         setSelected(gatewayName);
-                        onPay(gatewayName); // Immediately trigger redirect/checkout on click!
+                        setStep('sandbox_terminal');
                       }}
                     />
                   );
