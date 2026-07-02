@@ -39,182 +39,208 @@ if (empty($reference) || empty($gatewayName)) {
     exit();
 }
 
-// Fetch transaction record
-$txQuery = "SELECT * FROM `payment_transactions` WHERE ";
-if ($transactionId > 0) {
-    $txStmt = $pdo->prepare($txQuery . "`id` = ? AND `client_id` = ?");
-    $txStmt->execute([$transactionId, $user['id']]);
-} else {
-    $txStmt = $pdo->prepare($txQuery . "`reference` = ? AND `client_id` = ?");
-    $txStmt->execute([$reference, $user['id']]);
-}
-$transaction = $txStmt->fetch(PDO::FETCH_ASSOC);
+// Start database transaction with row locking to prevent race conditions
+$pdo->beginTransaction();
 
-if (!$transaction) {
-    http_response_code(404);
-    echo json_encode(["message" => "Transaction record not found."]);
-    exit();
-}
-
-if ($transaction['status'] === 'success') {
-    echo json_encode(["success" => true, "message" => "Payment already verified and fulfilled.", "already_verified" => true]);
-    exit();
-}
-
-// Fetch gateway secret key
-$gwStmt = $pdo->prepare("SELECT `secret_key`, `webhook_secret` FROM `payment_gateways` WHERE `gateway_name` = ?");
-$gwStmt->execute([$gatewayName]);
-$gateway = $gwStmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$gateway) {
-    http_response_code(400);
-    echo json_encode(["message" => "Gateway configuration not found."]);
-    exit();
-}
-
-$verified = false;
-$gatewayResponse = null;
-
-// ─── Gateway-specific verification ───
-if (strpos($reference, 'BFT-DEMO-') === 0) {
-    $verified = true;
-    $gatewayResponse = json_encode(["status" => "success", "mode" => "demo_simulation"]);
-} else {
-    switch ($gatewayName) {
-        case 'paystack':
-            $ch = curl_init('https://api.paystack.co/transaction/verify/' . urlencode($reference));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $gateway['secret_key']
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            $paystackRes = json_decode($result, true);
-            $gatewayResponse = $result;
-
-            if ($httpCode === 200 && isset($paystackRes['data']['status']) && $paystackRes['data']['status'] === 'success') {
-                // Verify amount matches
-                $paidAmount = $paystackRes['data']['amount'] / 100; // Convert from kobo
-                if ($paidAmount >= $transaction['amount']) {
-                    $verified = true;
-                }
-            }
-            break;
-
-        case 'flutterwave':
-            $flwTxId = trim($inputData['flw_transaction_id'] ?? '');
-            if (empty($flwTxId)) {
-                // Fallback to tx_ref check if ID not provided
-                $flwTxId = $reference; 
-            }
-            $ch = curl_init('https://api.flutterwave.com/v3/transactions/' . urlencode($flwTxId) . '/verify');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $gateway['secret_key']
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            $flwRes = json_decode($result, true);
-            $gatewayResponse = $result;
-
-            if ($httpCode === 200 && isset($flwRes['data']['status']) && $flwRes['data']['status'] === 'successful') {
-                if ($flwRes['data']['amount'] >= $transaction['amount']) {
-                    $verified = true;
-                }
-            }
-            break;
-
-        case 'stripe':
-            // Stripe verify: Retrieve checkout session status
-            $ch = curl_init('https://api.stripe.com/v1/checkout/sessions/' . urlencode($reference));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_USERPWD, $gateway['secret_key'] . ':');
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            $stripeRes = json_decode($result, true);
-            $gatewayResponse = $result;
-
-            if ($httpCode === 200 && isset($stripeRes['payment_status']) && $stripeRes['payment_status'] === 'paid') {
-                $verified = true;
-            }
-            break;
-
-        case 'monnify':
-            // Monnify: Verify transaction status
-            // 1. Get access token
-            $ch = curl_init('https://api.monnify.com/api/v1/auth/login');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Basic ' . base64_encode($gateway['public_key'] . ':' . $gateway['secret_key'])
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $authResStr = curl_exec($ch);
-            curl_close($ch);
-
-            $authRes = json_decode($authResStr, true);
-            $accessToken = $authRes['responseBody']['accessToken'] ?? '';
-
-            if (empty($accessToken)) {
-                break;
-            }
-
-            // 2. Query status
-            $ch = curl_init('https://api.monnify.com/api/v2/transactions/query?paymentReference=' . urlencode($reference));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $accessToken
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $result = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            $monnifyRes = json_decode($result, true);
-            $gatewayResponse = $result;
-
-            if ($httpCode === 200 && isset($monnifyRes['responseBody']['paymentStatus']) && $monnifyRes['responseBody']['paymentStatus'] === 'PAID') {
-                $verified = true;
-            }
-            break;
+try {
+    // 1. Fetch transaction record with FOR UPDATE write lock
+    $txQuery = "SELECT * FROM `payment_transactions` WHERE ";
+    if ($transactionId > 0) {
+        $txStmt = $pdo->prepare($txQuery . "`id` = ? AND `client_id` = ? FOR UPDATE");
+        $txStmt->execute([$transactionId, $user['id']]);
+    } else {
+        $txStmt = $pdo->prepare($txQuery . "`reference` = ? AND `client_id` = ? FOR UPDATE");
+        $txStmt->execute([$reference, $user['id']]);
     }
-}
+    $transaction = $txStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($verified) {
-    // ── Fulfill: Update transaction, invoice, and task ──
-    $pdo->beginTransaction();
-    try {
-        // 1. Update transaction status
+    if (!$transaction) {
+        $pdo->rollBack();
+        http_response_code(404);
+        echo json_encode(["message" => "Transaction record not found."]);
+        exit();
+    }
+
+    // 2. Check if already processed
+    if ($transaction['status'] === 'success') {
+        $pdo->commit();
+        echo json_encode(["success" => true, "message" => "Payment already verified and fulfilled.", "already_verified" => true]);
+        exit();
+    }
+
+    // Fetch gateway secret key
+    $gwStmt = $pdo->prepare("SELECT `secret_key`, `public_key` FROM `payment_gateways` WHERE `gateway_name` = ?");
+    $gwStmt->execute([$gatewayName]);
+    $gateway = $gwStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$gateway) {
+        $pdo->rollBack();
+        http_response_code(400);
+        echo json_encode(["message" => "Gateway configuration not found."]);
+        exit();
+    }
+
+    $verified = false;
+    $gatewayResponse = null;
+
+    // Helper function to perform secure cURL requests
+    function verify_gateway_curl($url, $method = 'GET', $payload = null, $headers = [], $basicAuth = null) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disabled peer verification for local XAMPP sandbox test routes
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            if ($payload) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            }
+        }
+        
+        if ($basicAuth) {
+            curl_setopt($ch, CURLOPT_USERPWD, $basicAuth);
+        }
+        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        
+        return [
+            'success' => ($err === ''),
+            'error' => $err,
+            'code' => $httpCode,
+            'body' => $response
+        ];
+    }
+
+    // 3. Verify status with Gateway
+    if (strpos($reference, 'BFT-DEMO-') === 0) {
+        $verified = true;
+        $gatewayResponse = json_encode(["status" => "success", "mode" => "demo_simulation"]);
+    } else {
+        switch ($gatewayName) {
+            case 'paystack':
+                $res = verify_gateway_curl(
+                    'https://api.paystack.co/transaction/verify/' . urlencode($reference),
+                    'GET',
+                    null,
+                    ['Authorization: Bearer ' . $gateway['secret_key']]
+                );
+
+                $paystackRes = json_decode($res['body'], true);
+                $gatewayResponse = $res['body'];
+
+                if ($res['code'] === 200 && isset($paystackRes['data']['status']) && $paystackRes['data']['status'] === 'success') {
+                    $paidAmount = $paystackRes['data']['amount'] / 100; // Convert from kobo/cents
+                    if ($paidAmount >= $transaction['amount']) {
+                        $verified = true;
+                    }
+                }
+                break;
+
+            case 'flutterwave':
+                $flwTxId = trim($inputData['flw_transaction_id'] ?? '');
+                if (empty($flwTxId)) {
+                    $flwTxId = $reference; 
+                }
+                $res = verify_gateway_curl(
+                    'https://api.flutterwave.com/v3/transactions/' . urlencode($flwTxId) . '/verify',
+                    'GET',
+                    null,
+                    ['Authorization: Bearer ' . $gateway['secret_key']]
+                );
+
+                $flwRes = json_decode($res['body'], true);
+                $gatewayResponse = $res['body'];
+
+                if ($res['code'] === 200 && isset($flwRes['data']['status']) && $flwRes['data']['status'] === 'successful') {
+                    if ($flwRes['data']['amount'] >= $transaction['amount']) {
+                        $verified = true;
+                    }
+                }
+                break;
+
+            case 'stripe':
+                $res = verify_gateway_curl(
+                    'https://api.stripe.com/v1/checkout/sessions/' . urlencode($reference),
+                    'GET',
+                    null,
+                    [],
+                    $gateway['secret_key'] . ':'
+                );
+
+                $stripeRes = json_decode($res['body'], true);
+                $gatewayResponse = $res['body'];
+
+                if ($res['code'] === 200 && isset($stripeRes['payment_status']) && $stripeRes['payment_status'] === 'paid') {
+                    $verified = true;
+                }
+                break;
+
+            case 'monnify':
+                // Monnify Auth login to get token
+                $authRes = verify_gateway_curl(
+                    'https://api.monnify.com/api/v1/auth/login',
+                    'POST',
+                    null,
+                    [],
+                    $gateway['public_key'] . ':' . $gateway['secret_key']
+                );
+
+                $authBody = json_decode($authRes['body'], true);
+                $accessToken = $authBody['responseBody']['accessToken'] ?? '';
+
+                if (empty($accessToken)) {
+                    break;
+                }
+
+                // Query Monnify Transaction status
+                $res = verify_gateway_curl(
+                    'https://api.monnify.com/api/v2/transactions/query?paymentReference=' . urlencode($reference),
+                    'GET',
+                    null,
+                    ['Authorization: Bearer ' . $accessToken]
+                );
+
+                $monnifyRes = json_decode($res['body'], true);
+                $gatewayResponse = $res['body'];
+
+                if ($res['code'] === 200 && isset($monnifyRes['responseBody']['paymentStatus']) && $monnifyRes['responseBody']['paymentStatus'] === 'PAID') {
+                    $verified = true;
+                }
+                break;
+        }
+    }
+
+    if ($verified) {
+        // 4. Update transaction status
         $updateTx = $pdo->prepare("UPDATE `payment_transactions` SET `status` = 'success', `gateway_response` = ? WHERE `id` = ?");
         $updateTx->execute([$gatewayResponse, $transaction['id']]);
 
-        // 2. Update invoice status to Paid
+        // 5. Update invoice status to Paid
         $updateInv = $pdo->prepare("UPDATE `client_invoices` SET `status` = 'Paid', `balance_due` = 0 WHERE `id` = ?");
         $updateInv->execute([$transaction['invoice_id']]);
 
-        // 3. Mark payment task as Completed
+        // 6. Mark payment task as Completed
         $updateTask = $pdo->prepare("UPDATE `client_tasks` SET `status` = 'Completed' WHERE `client_id` = ? AND `action_type` = 'payment' AND `status` = 'Pending'");
-        $updateTask->execute([$user['id']]);
+        $updateTask->execute([$transaction['client_id']]);
 
-        // 4. Recalculate project progress
+        // 7. Recalculate project progress
         $totalTasks = $pdo->prepare("SELECT COUNT(*) FROM `client_tasks` WHERE `client_id` = ?");
-        $totalTasks->execute([$user['id']]);
+        $totalTasks->execute([$transaction['client_id']]);
         $total = $totalTasks->fetchColumn();
 
         $completedTasks = $pdo->prepare("SELECT COUNT(*) FROM `client_tasks` WHERE `client_id` = ? AND `status` = 'Completed'");
-        $completedTasks->execute([$user['id']]);
+        $completedTasks->execute([$transaction['client_id']]);
         $completed = $completedTasks->fetchColumn();
 
         $progressPercent = $total > 0 ? intval(($completed / $total) * 100) : 0;
+        
         $projStatus = 'Planning';
         if ($progressPercent >= 100) $projStatus = 'Final Handover';
         elseif ($progressPercent >= 75) $projStatus = 'Testing & QA';
@@ -223,15 +249,15 @@ if ($verified) {
         elseif ($progressPercent > 0) $projStatus = 'Discovery Phase';
 
         $updateProj = $pdo->prepare("UPDATE `client_projects` SET `progress` = ?, `status` = ? WHERE `client_id` = ?");
-        $updateProj->execute([$progressPercent, $projStatus, $user['id']]);
+        $updateProj->execute([$progressPercent, $projStatus, $transaction['client_id']]);
 
-        // 5. Log system message in chat
+        // 8. Log system message in chat
         $adminStmt = $pdo->query("SELECT `id` FROM `users` WHERE `role` = 'Super Admin' LIMIT 1");
         $adminId = $adminStmt->fetchColumn() ?: 1;
 
         $logMsg = "💰 Payment Confirmed: " . $transaction['currency'] . " " . number_format($transaction['amount'], 2) . " received via " . ucfirst($gatewayName) . " (Ref: " . $reference . "). Invoice has been marked as Paid.";
         $chatStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'System Logger', 0)");
-        $chatStmt->execute([$adminId, $user['id'], $logMsg]);
+        $chatStmt->execute([$adminId, $transaction['client_id'], $logMsg]);
 
         $pdo->commit();
 
@@ -242,21 +268,19 @@ if ($verified) {
             "amount_paid" => $transaction['amount'],
             "gateway" => $gatewayName
         ]);
-    } catch (Exception $e) {
+        exit();
+    } else {
         $pdo->rollBack();
-        http_response_code(500);
-        echo json_encode(["message" => "Fulfillment error: " . $e->getMessage()]);
+        http_response_code(400);
+        echo json_encode(["message" => "Payment verification failed or was not authorized by the gateway."]);
+        exit();
     }
-} else {
-    // Update transaction as failed
-    $updateTx = $pdo->prepare("UPDATE `payment_transactions` SET `status` = 'failed', `gateway_response` = ? WHERE `id` = ?");
-    $updateTx->execute([$gatewayResponse, $transaction['id']]);
 
-    http_response_code(400);
-    echo json_encode([
-        "success" => false,
-        "message" => "Payment verification failed. The gateway did not confirm successful payment.",
-        "reference" => $reference
-    ]);
+} catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    http_response_code(500);
+    echo json_encode(["message" => "Fulfillment error: " . $e->getMessage()]);
+    exit();
 }
-exit();

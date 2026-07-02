@@ -88,6 +88,41 @@ $txStmt = $pdo->prepare("INSERT INTO `payment_transactions` (`client_id`, `invoi
 $txStmt->execute([$user['id'], $invoiceId, $gatewayName, $reference, $txRef, $payAmount, $currencyCode]);
 $transactionId = $pdo->lastInsertId();
 
+// Helper function to perform secure cURL requests
+function perform_gateway_curl($url, $method = 'POST', $payload = null, $headers = [], $basicAuth = null) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disabled peer verification for local XAMPP sandbox test routes
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    
+    if ($method === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        if ($payload) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        }
+    }
+    
+    if ($basicAuth) {
+        curl_setopt($ch, CURLOPT_USERPWD, $basicAuth);
+    }
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    
+    return [
+        'success' => ($err === ''),
+        'error' => $err,
+        'code' => $httpCode,
+        'body' => $response
+    ];
+}
+
 // Check if the keys are configured. If not, auto-enable sandbox simulation.
 if (empty($gateway['public_key']) || empty($gateway['secret_key'])) {
     $demoReference = 'BFT-DEMO-' . strtoupper($gatewayName) . '-' . time() . '-' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
@@ -127,8 +162,7 @@ $responseData = [
 // Gateway-specific initialization
 switch ($gatewayName) {
     case 'paystack':
-        // Paystack: Initialize transaction server-side to get access_code
-        $paystackAmount = intval($payAmount * 100); // Convert to kobo/cents
+        $paystackAmount = intval($payAmount * 100);
         $paystackPayload = json_encode([
             "email" => $clientEmail,
             "amount" => $paystackAmount,
@@ -142,31 +176,27 @@ switch ($gatewayName) {
             ]
         ]);
 
-        $ch = curl_init('https://api.paystack.co/transaction/initialize');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $gateway['secret_key'],
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $paystackPayload);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $result = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $res = perform_gateway_curl(
+            'https://api.paystack.co/transaction/initialize',
+            'POST',
+            $paystackPayload,
+            [
+                'Authorization: Bearer ' . $gateway['secret_key'],
+                'Content-Type: application/json'
+            ]
+        );
 
-        $paystackRes = json_decode($result, true);
-        if ($httpCode === 200 && isset($paystackRes['data']['access_code'])) {
+        $paystackRes = json_decode($res['body'], true);
+        if ($res['code'] === 200 && isset($paystackRes['data']['access_code'])) {
             $responseData['access_code'] = $paystackRes['data']['access_code'];
             $responseData['authorization_url'] = $paystackRes['data']['authorization_url'];
         } else {
-            $responseData['gateway_error'] = $paystackRes['message'] ?? 'Failed to initialize Paystack transaction.';
+            $responseData['gateway_error'] = $paystackRes['message'] ?? $res['error'] ?: 'Failed to initialize Paystack transaction.';
         }
         $responseData['public_key'] = $gateway['public_key'];
         break;
 
     case 'flutterwave':
-        // Flutterwave: Return config for inline popup (initialization is client-side)
         $responseData['public_key'] = $gateway['public_key'];
         $responseData['payment_options'] = 'card,banktransfer,ussd,mobilemoney';
         $responseData['customizations'] = [
@@ -177,7 +207,6 @@ switch ($gatewayName) {
         break;
 
     case 'stripe':
-        // Stripe: Create a Checkout Session and return URL for redirect
         $stripePayload = http_build_query([
             'line_items[0][price_data][currency]' => strtolower($currencyCode),
             'line_items[0][price_data][product_data][name]' => 'Invoice ' . $invoice['invoice_code'],
@@ -193,29 +222,28 @@ switch ($gatewayName) {
             'metadata[transaction_id]' => $transactionId
         ]);
 
-        $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_USERPWD, $gateway['secret_key'] . ':');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $stripePayload);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $result = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $res = perform_gateway_curl(
+            'https://api.stripe.com/v1/checkout/sessions',
+            'POST',
+            $stripePayload,
+            [
+                'Content-Type: application/x-www-form-urlencoded'
+            ],
+            $gateway['secret_key'] . ':'
+        );
 
-        $stripeRes = json_decode($result, true);
-        if ($httpCode === 200 && isset($stripeRes['url'])) {
+        $stripeRes = json_decode($res['body'], true);
+        if ($res['code'] === 200 && isset($stripeRes['url'])) {
             $responseData['checkout_url'] = $stripeRes['url'];
             $responseData['session_id'] = $stripeRes['id'];
         } else {
-            $responseData['gateway_error'] = $stripeRes['error']['message'] ?? 'Failed to create Stripe checkout session.';
+            $responseData['gateway_error'] = $stripeRes['error']['message'] ?? $res['error'] ?: 'Failed to create Stripe checkout session.';
         }
         break;
 
     case 'monnify':
-        // Monnify: Return config for inline popup (initialization is client-side)
         $responseData['public_key'] = $gateway['public_key'];
-        $responseData['contract_code'] = $gateway['webhook_secret'] ?: ''; // We reuse webhook_secret field for Monnify contract code
+        $responseData['contract_code'] = $gateway['webhook_secret'] ?: '';
         break;
 
     default:
