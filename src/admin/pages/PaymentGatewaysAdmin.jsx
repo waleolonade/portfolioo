@@ -36,6 +36,28 @@ export default function PaymentGatewaysAdmin() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
+  // Load admin email on mount
+  useEffect(() => {
+    const fetchAdminEmail = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/payment_gateways.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ action: 'get_admin_email' })
+        });
+        const data = await res.json();
+        if (data.success && data.email) {
+          setAdminEmail(data.email);
+        }
+      } catch (err) {
+        console.error('Failed to load admin email:', err);
+      }
+    };
+    if (adminToken) {
+      fetchAdminEmail();
+    }
+  }, [adminToken]);
+
   // ─── OTP: Send ───
   const handleSendOtp = async () => {
     setOtpLoading(true);

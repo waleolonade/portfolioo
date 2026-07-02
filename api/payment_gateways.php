@@ -85,6 +85,13 @@ if ($method === 'POST') {
         exit();
     }
 
+    // ── Get Admin Email ──
+    if ($action === 'get_admin_email') {
+        $user = verify_user_role(['Super Admin'], $pdo);
+        echo json_encode(["success" => true, "email" => $user['email']]);
+        exit();
+    }
+
     // ── Update Admin Email ──
     if ($action === 'update_admin_email') {
         $user = verify_user_role(['Super Admin'], $pdo);
