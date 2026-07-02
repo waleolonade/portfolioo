@@ -7,15 +7,34 @@ import Footer from '../components/Footer';
 
 export default function ClientAuth({ onAuthSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
+  const [regStep, setRegStep] = useState(1); // 1: Credentials, 2: Project Details
+  
+  // Credentials
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Project Details
+  const [projectTitle, setProjectTitle] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
+  const [projectBudget, setProjectBudget] = useState('4000');
+  const [currency, setCurrency] = useState('$');
+  const [projectStack, setProjectStack] = useState('web_app');
+  const [targetDate, setTargetDate] = useState('');
+
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Set default target date dynamically on load
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 45);
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    setTargetDate(`${months[futureDate.getMonth()]} ${futureDate.getDate()}, ${futureDate.getFullYear()}`);
+
     // If client already logged in, redirect directly to portal
     if (localStorage.getItem('clientToken')) {
       navigate('/portal');
@@ -28,21 +47,35 @@ export default function ClientAuth({ onAuthSuccess }) {
     setSuccess(null);
 
     if (!username || !password) {
-      setError('All fields are required.');
+      setError('Username and password fields are required.');
       return;
     }
 
     if (isRegister) {
-      if (password !== confirmPassword) {
-        setError('Passwords do not match.');
+      if (regStep === 1) {
+        if (!email.trim() || !email.includes('@')) {
+          setError('Please provide a valid client email address for invoicing and OTP access.');
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError('Passwords do not match.');
+          return;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters.');
+          return;
+        }
+        if (username.length < 3) {
+          setError('Username must be at least 3 characters.');
+          return;
+        }
+        // Move to step 2
+        setRegStep(2);
         return;
       }
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters.');
-        return;
-      }
-      if (username.length < 3) {
-        setError('Username must be at least 3 characters.');
+
+      if (!projectTitle.trim()) {
+        setError('Project Title is required.');
         return;
       }
     }
@@ -50,7 +83,19 @@ export default function ClientAuth({ onAuthSuccess }) {
     setLoading(true);
 
     const endpoint = isRegister ? 'register.php' : 'auth.php';
-    const payload = { username, password };
+    const payload = isRegister 
+      ? { 
+          username: username.trim(), 
+          password, 
+          email: email.trim(), 
+          project_title: projectTitle.trim(), 
+          project_desc: projectDesc.trim(), 
+          project_budget: parseFloat(projectBudget) || 4000, 
+          currency, 
+          project_stack: projectStack,
+          target_date: targetDate
+        }
+      : { username: username.trim(), password };
 
     fetch(`${API_BASE_URL}/${endpoint}`, {
       method: 'POST',
@@ -129,14 +174,18 @@ export default function ClientAuth({ onAuthSuccess }) {
             </div>
           </div>
 
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, textAlign: 'center', marginBottom: '8px' }}>
-            {isRegister ? 'Register Workspace' : 'Client Login'}
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, textAlign: 'center', marginBottom: '8px', letterSpacing: '-0.3px' }}>
+            {isRegister 
+              ? (regStep === 1 ? 'Register Workspace (1/2)' : 'Project Details (2/2)') 
+              : 'Client Login'}
           </h2>
           
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '32px' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '28px', lineHeight: 1.45 }}>
             {isRegister 
-              ? 'Create a secure client portal account to track progress and chat with our team.' 
-              : 'Sign in to access your project files, task list, invoices, and message stream.'}
+              ? (regStep === 1 
+                  ? 'Set up secure credentials for your digital workspace.' 
+                  : 'Specify your build category, target dates, and scope budget.') 
+              : 'Sign in to access your project workspace, files, and chat.'}
           </p>
 
           {error && (
@@ -144,12 +193,14 @@ export default function ClientAuth({ onAuthSuccess }) {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
               color: 'var(--error)',
               padding: '12px 14px',
               borderRadius: 'var(--radius-sm)',
               marginBottom: '24px',
-              fontSize: '0.85rem'
+              fontSize: '0.82rem',
+              lineHeight: 1.4,
+              border: '1px solid rgba(239, 68, 68, 0.2)'
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0 }} />
               <span>{error}</span>
@@ -161,12 +212,14 @@ export default function ClientAuth({ onAuthSuccess }) {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
               color: 'var(--success)',
               padding: '12px 14px',
               borderRadius: 'var(--radius-sm)',
               marginBottom: '24px',
-              fontSize: '0.85rem'
+              fontSize: '0.82rem',
+              lineHeight: 1.4,
+              border: '1px solid rgba(16, 185, 129, 0.2)'
             }}>
               <Terminal size={16} style={{ flexShrink: 0 }} />
               <span>{success}</span>
@@ -174,63 +227,199 @@ export default function ClientAuth({ onAuthSuccess }) {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="username">Workspace Username</label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="form-control"
-                placeholder="e.g. logistics_corp"
-                disabled={loading}
-                required
-              />
-            </div>
+            {/* ════ STEP 1: CREDENTIALS ════ */}
+            {(!isRegister || regStep === 1) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="username">Workspace Username</label>
+                  <input
+                    type="text"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="form-control"
+                    placeholder="e.g. logistics_corp"
+                    disabled={loading}
+                    required
+                  />
+                </div>
 
-            <div className="form-group" style={{ marginBottom: isRegister ? '16px' : '28px' }}>
-              <label className="form-label" htmlFor="password">Security Password</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-control"
-                placeholder="••••••••"
-                disabled={loading}
-                required
-              />
-            </div>
+                {isRegister && (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="email">Notification Email</label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="form-control"
+                      placeholder="client@company.com"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                )}
 
-            {isRegister && (
-              <div className="form-group" style={{ marginBottom: '28px' }}>
-                <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="form-control"
-                  placeholder="••••••••"
-                  disabled={loading}
-                  required
-                />
+                <div className="form-group">
+                  <label className="form-label" htmlFor="password">Security Password</label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="form-control"
+                    placeholder="••••••••"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                {isRegister && (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="form-control"
+                      placeholder="••••••••"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                )}
               </div>
             )}
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '12px', fontWeight: 700 }}
-              disabled={loading}
-            >
-              {loading ? 'Authenticating...' : isRegister ? 'Create Workspace' : 'Sign In'}
-            </button>
+            {/* ════ STEP 2: PROJECT SPECS ════ */}
+            {isRegister && regStep === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="projectTitle">Project Title</label>
+                  <input
+                    type="text"
+                    id="projectTitle"
+                    value={projectTitle}
+                    onChange={(e) => setProjectTitle(e.target.value)}
+                    className="form-control"
+                    placeholder="e.g. Logistics Portal App"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="projectStack">Platform Category / Stack</label>
+                  <select
+                    id="projectStack"
+                    value={projectStack}
+                    onChange={(e) => setProjectStack(e.target.value)}
+                    className="form-control"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '10px' }}
+                    disabled={loading}
+                  >
+                    <option value="web_app">Next.js / React Web App</option>
+                    <option value="mobile_app">Expo / React Native Mobile App</option>
+                    <option value="backend">Node.js Backend / API</option>
+                    <option value="php_site">PHP / Laravel Website</option>
+                    <option value="fullstack">Full-Stack Application</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ flex: 1.5 }}>
+                    <label className="form-label" htmlFor="projectBudget">Project Budget</label>
+                    <input
+                      type="number"
+                      id="projectBudget"
+                      value={projectBudget}
+                      onChange={(e) => setProjectBudget(e.target.value)}
+                      className="form-control"
+                      placeholder="4000"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" htmlFor="currency">Currency</label>
+                    <select
+                      id="currency"
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="form-control"
+                      style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '10px' }}
+                      disabled={loading}
+                    >
+                      <option value="$">USD ($)</option>
+                      <option value="₦">NGN (₦)</option>
+                      <option value="€">EUR (€)</option>
+                      <option value="£">GBP (£)</option>
+                      <option value="C$">CAD (C$)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="targetDate">Target Launch Date</label>
+                  <input
+                    type="text"
+                    id="targetDate"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className="form-control"
+                    placeholder="August 15, 2026"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="projectDesc">Short Description (Optional)</label>
+                  <textarea
+                    id="projectDesc"
+                    value={projectDesc}
+                    onChange={(e) => setProjectDesc(e.target.value)}
+                    className="form-control"
+                    placeholder="Brief description of your business goal..."
+                    rows={2}
+                    style={{ fontSize: '0.85rem', resize: 'vertical' }}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: '24px', display: 'flex', gap: '10px' }}>
+              {isRegister && regStep === 2 && (
+                <button
+                  type="button"
+                  onClick={() => setRegStep(1)}
+                  className="btn btn-outline"
+                  style={{ flex: 1, padding: '12px', fontWeight: 700 }}
+                  disabled={loading}
+                >
+                  Back
+                </button>
+              )}
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ flex: 2, padding: '12px', fontWeight: 700 }}
+                disabled={loading}
+              >
+                {loading 
+                  ? 'Processing...' 
+                  : isRegister 
+                    ? (regStep === 1 ? 'Next: Project Details' : 'Create Workspace') 
+                    : 'Sign In'}
+              </button>
+            </div>
           </form>
 
           <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px', textAlign: 'center' }}>
             <button
-              onClick={() => { setError(null); setIsRegister(!isRegister); }}
+              onClick={() => { setError(null); setIsRegister(!isRegister); setRegStep(1); }}
               style={{
                 background: 'none',
                 border: 'none',
