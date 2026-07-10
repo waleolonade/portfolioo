@@ -25,6 +25,11 @@ import ServicesPage from './pages/ServicesPage';
 import PortfolioPage from './pages/PortfolioPage';
 import ProjectDetails from './pages/ProjectDetails';
 import ClientPortal from './pages/ClientPortal';
+import BlogPage from './pages/BlogPage';
+import BlogPost from './pages/BlogPost';
+import PricingPage from './pages/PricingPage';
+import FAQPage from './pages/FAQPage';
+import ContactPage from './pages/ContactPage';
 
 // Admin Pages
 import Login from './admin/Login';
@@ -453,6 +458,11 @@ function App() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/portfolio/:id" element={<ProjectDetails />} />
           <Route path="/portal" element={<ClientPortal />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:id" element={<BlogPost />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<Login />} />

@@ -1,21 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import { 
-  Search, 
-  ArrowRight, 
-  Star, 
-  GitFork, 
-  Code2, 
-  ExternalLink, 
-  Globe, 
-  Calendar, 
-  User, 
-  TrendingUp,
-  SlidersHorizontal,
-  Bookmark
+import {
+    ArrowRight,
+    Bookmark,
+    Calendar,
+    Code2,
+    ExternalLink,
+    GitFork,
+    Search,
+    SlidersHorizontal,
+    Star,
+    TrendingUp,
+    User
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Footer from '../components/Footer';
+import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../config';
 
 const GithubIcon = ({ size = 16, className = "", style = {} }) => (

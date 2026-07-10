@@ -139,10 +139,17 @@ export default function Contact({ cms = {} }) {
     <section id="contact" className="section" style={{ borderTop: '1px solid var(--border)' }}>
       <div className="container">
         
-        <h2 className="section-title">{cms.home_cta_title || 'Start a Conversation'}</h2>
-        <p className="section-subtitle">
-          {cms.home_cta_subtitle || 'Contact our engineers directly, request a dynamic project cost estimate, or schedule a video briefing.'}
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="section-title">{cms.home_cta_title || 'Start a Conversation'}</h2>
+          <p className="section-subtitle">
+            {cms.home_cta_subtitle || 'Contact our engineers directly, request a dynamic project cost estimate, or schedule a video briefing.'}
+          </p>
+        </motion.div>
 
         {/* Dynamic switcher tabs */}
         <div style={{
@@ -166,7 +173,13 @@ export default function Contact({ cms = {} }) {
         <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '50px', textAlign: 'left' }} className="contact-grid">
           
           {/* Info Card column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+          <motion.div
+            style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}
+            initial={{ opacity: 0, x: -25 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 16 }}
+          >
             <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{cms.contact_hq_name || 'Brainfeels HQ'}</h3>
             
             <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
@@ -224,7 +237,7 @@ export default function Contact({ cms = {} }) {
                 <MessageCircle size={16} /> Chat via WhatsApp
               </a>
             )}
-          </div>
+          </motion.div>
 
           {/* Form column */}
           <div className="card" style={{ padding: '32px', overflow: 'hidden', position: 'relative' }}>

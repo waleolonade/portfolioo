@@ -2,12 +2,23 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, User, Clock, ArrowRight, ShieldCheck, 
   CheckCircle, Circle, RefreshCw, Folder, FileText, DollarSign, 
-  Download, Upload, Sparkles 
+  Download, Upload, Sparkles, Calendar
 } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 
 export default function ClientChatsAdmin() {
   const adminToken = localStorage.getItem('adminToken');
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [conversations, setConversations] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [selectedClientName, setSelectedClientName] = useState('');
@@ -47,6 +58,10 @@ export default function ClientChatsAdmin() {
   const [editInvoiceCurrency, setEditInvoiceCurrency] = useState('$');
   const [editInvoiceDueDate, setEditInvoiceDueDate] = useState('');
   const [editInvoiceStatus, setEditInvoiceStatus] = useState('Pending');
+
+  // Edit Task due date states
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editTaskDueDate, setEditTaskDueDate] = useState('');
 
   // Request new file states
   const [requestFileCategory, setRequestFileCategory] = useState('Specs');
@@ -195,6 +210,35 @@ export default function ClientChatsAdmin() {
       }
     } catch (err) {
       console.error('Error sending reply:', err);
+    }
+  };
+
+  // Save checklist task due date updates
+  const handleSaveTaskDueDate = async (taskId) => {
+    if (!editTaskDueDate.trim()) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/tasks.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({
+          action: 'task_update_due_date',
+          task_id: taskId,
+          due_date: editTaskDueDate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: editTaskDueDate } : t));
+        setEditingTaskId(null);
+      } else {
+        alert(data.message || 'Error updating due date.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error updating due date.');
     }
   };
 
@@ -827,9 +871,42 @@ export default function ClientChatsAdmin() {
                               <strong style={{ color: 'var(--text-primary)', textDecoration: task.status === 'Completed' ? 'line-through' : 'none' }}>
                                 {task.title}
                               </strong>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
-                                Action: {task.action_type} | Due: {task.due_date}
-                              </span>
+                              {editingTaskId === task.id ? (
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' }}>
+                                  <input 
+                                    type="text" 
+                                    value={editTaskDueDate} 
+                                    onChange={(e) => setEditTaskDueDate(e.target.value)} 
+                                    placeholder="e.g. Within 10 days" 
+                                    className="form-control" 
+                                    style={{ padding: '2px 6px', fontSize: '0.75rem', flexGrow: 1, height: '24px' }} 
+                                  />
+                                  <button 
+                                    onClick={() => handleSaveTaskDueDate(task.id)} 
+                                    className="btn btn-primary" 
+                                    style={{ padding: '2px 8px', fontSize: '0.7rem', height: '24px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    onClick={() => setEditingTaskId(null)} 
+                                    className="btn btn-outline" 
+                                    style={{ padding: '2px 8px', fontSize: '0.7rem', height: '24px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                                  <span>Action: {task.action_type} | Due: {task.due_date}</span>
+                                  <button
+                                    onClick={() => { setEditingTaskId(task.id); setEditTaskDueDate(task.due_date); }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', padding: '0 4px', textDecoration: 'underline' }}
+                                  >
+                                    Edit Due
+                                  </button>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -894,7 +971,7 @@ export default function ClientChatsAdmin() {
                                     setEditInvoiceAmount(inv.amount);
                                     setEditInvoiceBalance(inv.balance_due);
                                     setEditInvoiceCurrency(inv.currency || '$');
-                                    setEditInvoiceDueDate(inv.due_date);
+                                    setEditInvoiceDueDate(formatDateForInput(inv.due_date));
                                     setEditInvoiceStatus(inv.status);
                                   }}
                                   className="btn btn-outline"
@@ -932,7 +1009,17 @@ export default function ClientChatsAdmin() {
                           </div>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due Date</label>
-                            <input type="text" value={editInvoiceDueDate} onChange={(e) => setEditInvoiceDueDate(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <input 
+                                type="date" 
+                                value={editInvoiceDueDate} 
+                                onChange={(e) => setEditInvoiceDueDate(e.target.value)} 
+                                className="form-control" 
+                                style={{ width: '100%', padding: '4px 28px 4px 4px', fontSize: '0.75rem' }} 
+                                required 
+                              />
+                              <Calendar size={14} style={{ position: 'absolute', right: '8px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
@@ -977,7 +1064,17 @@ export default function ClientChatsAdmin() {
                           </div>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due Date</label>
-                            <input type="text" placeholder="e.g. July 20, 2026" value={newInvoiceDueDate} onChange={(e) => setNewInvoiceDueDate(e.target.value)} className="form-control" style={{ width: '100%', padding: '4px', fontSize: '0.75rem' }} required />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <input 
+                                type="date" 
+                                value={newInvoiceDueDate} 
+                                onChange={(e) => setNewInvoiceDueDate(e.target.value)} 
+                                className="form-control" 
+                                style={{ width: '100%', padding: '4px 28px 4px 4px', fontSize: '0.75rem' }} 
+                                required 
+                              />
+                              <Calendar size={14} style={{ position: 'absolute', right: '8px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>

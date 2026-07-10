@@ -12,6 +12,30 @@ import {
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 80,
+      damping: 15
+    }
+  }
+};
 
 const iconMap = {
   Code: <Code size={24} />,
@@ -83,15 +107,23 @@ export default function Services({ cms = {} }) {
           </p>
         </div>
         
-        <div className="services-grid-premium">
+        <motion.div 
+          className="services-grid-premium"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+        >
           {services.map((service, index) => {
             const [color1, color2] = gradientColors[index % gradientColors.length];
             const isHovered = hoveredIdx === index;
             
             return (
-              <div
+              <motion.div
                 key={service.id || index}
                 className="service-card-premium"
+                variants={cardVariants}
+                whileHover={{ y: -8, scale: 1.02 }}
                 onMouseEnter={() => setHoveredIdx(index)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{
@@ -101,8 +133,9 @@ export default function Services({ cms = {} }) {
               >
                 {/* Gradient glow on hover */}
                 <div className="service-card-glow" style={{
-                  background: `${color1}15`,
-                  opacity: isHovered ? 1 : 0
+                  background: `radial-gradient(circle at 50% 10%, ${color1}20, transparent 70%)`,
+                  opacity: isHovered ? 1 : 0,
+                  transition: 'opacity 0.4s ease'
                 }} />
 
                 <div style={{ position: 'relative', zIndex: 1 }}>
@@ -120,10 +153,10 @@ export default function Services({ cms = {} }) {
                 <Link to="/services" className="service-card-link" style={{ '--link-color': color1 }}>
                   Learn More <ArrowRight size={14} />
                 </Link>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         <div style={{ textAlign: 'center', marginTop: '48px' }}>
           <Link to="/services" className="btn btn-primary" style={{ padding: '14px 32px', borderRadius: '10px' }}>

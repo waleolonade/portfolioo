@@ -30,6 +30,7 @@ if (!$user) {
 $inputData = json_decode(file_get_contents('php://input'), true);
 $invoiceId = intval($inputData['invoice_id'] ?? 0);
 $gatewayName = trim($inputData['gateway'] ?? '');
+$paymentOption = trim($inputData['payment_option'] ?? '100%');
 
 if ($invoiceId <= 0 || empty($gatewayName)) {
     http_response_code(400);
@@ -41,8 +42,8 @@ try {
     // Instantiate Unified Payment Service
     $paymentService = new PaymentService($pdo);
     
-    // Initialize transaction with automatic gateway failovers
-    $responseData = $paymentService->initialize($invoiceId, $user, $gatewayName);
+    // Initialize transaction with automatic gateway failovers and selected payment option
+    $responseData = $paymentService->initialize($invoiceId, $user, $gatewayName, $paymentOption);
     
     echo json_encode($responseData);
     exit();

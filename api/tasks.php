@@ -51,11 +51,17 @@ try {
             $fileStmt->execute([$currentUserId]);
             $files = $fileStmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Fetch successful transactions
+            $txStmt = $pdo->prepare("SELECT `id`, `invoice_id`, `amount`, `payment_option`, `gateway`, `reference`, `created_at` FROM `payment_transactions` WHERE `client_id` = ? AND `status` = 'success'");
+            $txStmt->execute([$currentUserId]);
+            $transactions = $txStmt->fetchAll(PDO::FETCH_ASSOC);
+
             echo json_encode([
                 "project" => $project,
                 "tasks" => $tasks,
                 "invoices" => $invoices,
                 "files" => $files,
+                "transactions" => $transactions,
                 "receipt_settings" => $receiptSettings
             ]);
             exit();
@@ -80,11 +86,16 @@ try {
                 $fileStmt->execute([$clientId]);
                 $files = $fileStmt->fetchAll(PDO::FETCH_ASSOC);
 
+                $txStmt = $pdo->prepare("SELECT `id`, `invoice_id`, `amount`, `payment_option`, `gateway`, `reference`, `created_at` FROM `payment_transactions` WHERE `client_id` = ? AND `status` = 'success'");
+                $txStmt->execute([$clientId]);
+                $transactions = $txStmt->fetchAll(PDO::FETCH_ASSOC);
+
                 echo json_encode([
                     "project" => $project,
                     "tasks" => $tasks,
                     "invoices" => $invoices,
                     "files" => $files,
+                    "transactions" => $transactions,
                     "receipt_settings" => $receiptSettings
                 ]);
                 exit();
@@ -294,6 +305,25 @@ try {
             exit();
         }
 
+        // Admin Action: Update checklist task due date
+        if ($action === 'task_update_due_date') {
+            verify_user_role(['Project Manager', 'Super Admin'], $pdo);
+            $taskId = intval($inputData['task_id']);
+            $dueDate = trim($inputData['due_date'] ?? '');
+
+            if ($taskId <= 0 || empty($dueDate)) {
+                http_response_code(400);
+                echo json_encode(["message" => "Invalid parameters for updating task due date."]);
+                exit();
+            }
+
+            $stmt = $pdo->prepare("UPDATE `client_tasks` SET `due_date` = ? WHERE `id` = ?");
+            $stmt->execute([$dueDate, $taskId]);
+
+            echo json_encode(["success" => true, "message" => "Task due date updated successfully."]);
+            exit();
+        }
+
         // Admin Action: Update Project Target Date
         if ($action === 'project_update_target_date') {
             verify_user_role(['Project Manager', 'Super Admin'], $pdo);
@@ -412,8 +442,34 @@ try {
             exit();
         }
 
-        $newStatus = $task['status'] === 'Completed' ? 'Pending' : 'Completed';
         $clientOwnerId = intval($task['client_id']);
+
+        // --- HIGHEST SECURITY: CHECK PROGRESSIVE PAYMENT RESTRICTIONS ---
+        if ($currentUserRole === 'Client') {
+            // Find any pending/partially paid setup invoice for this client
+            $invStmt = $pdo->prepare("SELECT * FROM `client_invoices` WHERE `client_id` = ? AND `status` != 'Paid' LIMIT 1");
+            $invStmt->execute([$clientOwnerId]);
+            $pendingInvoice = $invStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($pendingInvoice) {
+                $hasMadeAnyPayment = (floatval($pendingInvoice['balance_due']) < floatval($pendingInvoice['amount']));
+                $hasCompletedPayment = false; // since status is not Paid and it is in pendingInvoice query
+
+                if (($task['action_type'] === 'brief' || $task['action_type'] === 'mockup') && !$hasMadeAnyPayment) {
+                    http_response_code(403);
+                    echo json_encode(["success" => false, "message" => "Security Lock: Complete your pending payment deposit to unlock this action item."]);
+                    exit();
+                }
+
+                if (($task['action_type'] === 'upload' || $task['action_type'] === 'feedback') && !$hasCompletedPayment) {
+                    http_response_code(403);
+                    echo json_encode(["success" => false, "message" => "Security Lock: Complete your full invoice payment to unlock this action item."]);
+                    exit();
+                }
+            }
+        }
+
+        $newStatus = $task['status'] === 'Completed' ? 'Pending' : 'Completed';
 
         // Update task status
         $updateStmt = $pdo->prepare("UPDATE `client_tasks` SET `status` = ? WHERE `id` = ?");

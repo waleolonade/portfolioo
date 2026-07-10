@@ -16,7 +16,7 @@ class PaymentService {
     /**
      * Initialize Payment with Automatic Gateway Failover Chain
      */
-    public function initialize($invoiceId, $client, $preferredGateway) {
+    public function initialize($invoiceId, $client, $preferredGateway, $paymentOption = '100%') {
         // Fetch invoice
         $invStmt = $this->pdo->prepare("SELECT * FROM `client_invoices` WHERE `id` = ? AND `client_id` = ?");
         $invStmt->execute([$invoiceId, $client['id']]);
@@ -29,7 +29,38 @@ class PaymentService {
             throw new Exception("This invoice has already been paid.");
         }
 
-        $payAmount = floatval($invoice['balance_due']) > 0 ? floatval($invoice['balance_due']) : floatval($invoice['amount']);
+        $originalAmount = floatval($invoice['amount']);
+        $balanceDue = floatval($invoice['balance_due']) > 0 ? floatval($invoice['balance_due']) : $originalAmount;
+
+        // Check if option was already paid successfully
+        if (in_array($paymentOption, ['50%', '30%'])) {
+            $checkOptStmt = $this->pdo->prepare("SELECT COUNT(*) FROM `payment_transactions` WHERE `invoice_id` = ? AND `payment_option` = ? AND `status` = 'success'");
+            $checkOptStmt->execute([$invoiceId, $paymentOption]);
+            $optCount = intval($checkOptStmt->fetchColumn());
+            if ($optCount > 0) {
+                throw new Exception("The {$paymentOption} installment has already been paid for this invoice.");
+            }
+        }
+
+        // Determine payAmount based on option
+        if ($paymentOption === '50%') {
+            $payAmount = $originalAmount * 0.50;
+        } elseif ($paymentOption === '30%') {
+            $payAmount = $originalAmount * 0.30;
+        } else {
+            // Default: 100% or remaining balance
+            $payAmount = $balanceDue;
+        }
+
+        // Cap to remaining balance
+        if ($payAmount > $balanceDue) {
+            $payAmount = $balanceDue;
+        }
+
+        if ($payAmount <= 0) {
+            throw new Exception("This invoice has already been fully paid.");
+        }
+
         $currency = $invoice['currency'] ?: 'NGN';
         
         $currencyMap = [
@@ -66,8 +97,8 @@ class PaymentService {
         $reference = 'BFT-' . strtoupper($preferredGateway) . '-' . time() . '-' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
         $txRef = 'BFTX-' . time() . '-' . $invoiceId;
         
-        $txStmt = $this->pdo->prepare("INSERT INTO `payment_transactions` (`client_id`, `invoice_id`, `gateway`, `reference`, `tx_ref`, `amount`, `currency`, `status`) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')");
-        $txStmt->execute([$client['id'], $invoiceId, $preferredGateway, $reference, $txRef, $payAmount, $currencyCode]);
+        $txStmt = $this->pdo->prepare("INSERT INTO `payment_transactions` (`client_id`, `invoice_id`, `gateway`, `reference`, `tx_ref`, `amount`, `currency`, `status`, `payment_option`) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+        $txStmt->execute([$client['id'], $invoiceId, $preferredGateway, $reference, $txRef, $payAmount, $currencyCode, $paymentOption]);
         $transactionId = $this->pdo->lastInsertId();
 
         $transactionRecord = [
@@ -82,42 +113,8 @@ class PaymentService {
         foreach ($gatewaysToTry as $gw) {
             $currentGatewayName = $gw['gateway_name'];
             
-            // Check if credentials are empty -> trigger Demo mode bypass
             if (empty($gw['public_key']) || empty($gw['secret_key'])) {
-                $demoReference = 'BFT-DEMO-' . strtoupper($currentGatewayName) . '-' . time() . '-' . str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-                $upStmt = $this->pdo->prepare("UPDATE `payment_transactions` SET `gateway` = ?, `reference` = ? WHERE `id` = ?");
-                $upStmt->execute([$currentGatewayName, $demoReference, $transactionId]);
-
-                $fallbackPublicKeys = [
-                    'paystack' => 'pk_test_a0d8bb568a0f8b1b11b7a2d4838dbf9c8b82dfc7',
-                    'flutterwave' => 'FLWPUBK_TEST-5f6ab585f81014e7a68e0d3c063f25c7-X',
-                    'stripe' => 'pk_test_TYooMQauvdEDq54NiTphI7jx',
-                    'monnify' => 'MK_TEST_SAF7KVGBDX'
-                ];
-                $pubKey = $gw['public_key'] ?: ($fallbackPublicKeys[$currentGatewayName] ?? '');
-
-                $resData = [
-                    "success" => true,
-                    "transaction_id" => $transactionId,
-                    "reference" => $demoReference,
-                    "tx_ref" => $txRef,
-                    "amount" => $payAmount,
-                    "currency" => $currencyCode,
-                    "client_email" => $client['email'] ?: $client['username'] . '@client.brainfeels.tech',
-                    "client_name" => $client['username'],
-                    "gateway" => $currentGatewayName,
-                    "invoice_code" => $invoice['invoice_code'],
-                    "public_key" => $pubKey,
-                    "contract_code" => $gw['webhook_secret'] ?: '1234567890',
-                    "is_demo" => true,
-                    "gateway_switched" => ($currentGatewayName !== $preferredGateway)
-                ];
-
-                if ($currentGatewayName === 'stripe') {
-                    $resData['gateway_error'] = 'Stripe is currently in Sandbox/Demo mode but does not have standard credentials configured. Please configure Stripe keys in your Admin Panel to test Hosted Checkout.';
-                }
-
-                return $resData;
+                throw new Exception("Gateway credentials are not configured for " . ucfirst($currentGatewayName));
             }
 
             try {
@@ -197,23 +194,18 @@ class PaymentService {
             $settlementAmount = $transaction['amount'];
             $providerReference = '';
 
-            if (strpos($reference, 'BFT-DEMO-') === 0) {
-                $verified = true;
-                $gatewayResponse = json_encode(["status" => "success", "mode" => "demo_simulation"]);
-            } else {
-                $gatewayAdapter = PaymentFactory::make($gatewayName);
-                $verifyRes = $gatewayAdapter->verifyPayment($reference, $transaction, $gatewayConfig, $inputData);
+            $gatewayAdapter = PaymentFactory::make($gatewayName);
+            $verifyRes = $gatewayAdapter->verifyPayment($reference, $transaction, $gatewayConfig, $inputData);
 
-                if ($verifyRes['success']) {
-                    $verified = true;
-                    $gatewayResponse = $verifyRes['raw_response'] ?? '';
-                    $fee = $verifyRes['fee'] ?? 0.00;
-                    $settlementAmount = $verifyRes['settlement_amount'] ?? $transaction['amount'];
-                    $providerReference = $verifyRes['provider_reference'] ?? '';
-                } else {
-                    $this->pdo->rollBack();
-                    return ["success" => false, "error" => $verifyRes['error']];
-                }
+            if ($verifyRes['success']) {
+                $verified = true;
+                $gatewayResponse = $verifyRes['raw_response'] ?? '';
+                $fee = $verifyRes['fee'] ?? 0.00;
+                $settlementAmount = $verifyRes['settlement_amount'] ?? $transaction['amount'];
+                $providerReference = $verifyRes['provider_reference'] ?? '';
+            } else {
+                $this->pdo->rollBack();
+                return ["success" => false, "error" => $verifyRes['error']];
             }
 
             if ($verified) {
@@ -221,13 +213,31 @@ class PaymentService {
                 $updateTx = $this->pdo->prepare("UPDATE `payment_transactions` SET `status` = 'success', `provider_reference` = ?, `fee` = ?, `settlement_amount` = ?, `gateway_response` = ? WHERE `id` = ?");
                 $updateTx->execute([$providerReference, $fee, $settlementAmount, $gatewayResponse, $transaction['id']]);
 
-                // 2. Update invoice status to Paid
-                $updateInv = $this->pdo->prepare("UPDATE `client_invoices` SET `status` = 'Paid', `balance_due` = 0 WHERE `id` = ?");
-                $updateInv->execute([$transaction['invoice_id']]);
+                // 2. Update invoice balance and status dynamically
+                $invStmt = $this->pdo->prepare("SELECT * FROM `client_invoices` WHERE `id` = ?");
+                $invStmt->execute([$transaction['invoice_id']]);
+                $invoice = $invStmt->fetch(PDO::FETCH_ASSOC);
 
-                // 3. Mark payment task as Completed
-                $updateTask = $this->pdo->prepare("UPDATE `client_tasks` SET `status` = 'Completed' WHERE `client_id` = ? AND `action_type` = 'payment' AND `status` = 'Pending'");
-                $updateTask->execute([$transaction['client_id']]);
+                if ($invoice) {
+                    $originalAmount = floatval($invoice['amount']);
+                    $currentBalance = floatval($invoice['balance_due']);
+                    // If balance_due is not populated or <= 0, fallback to original amount
+                    if ($currentBalance <= 0 && $invoice['status'] !== 'Paid') {
+                        $currentBalance = $originalAmount;
+                    }
+
+                    $newBalance = max(0.00, $currentBalance - floatval($transaction['amount']));
+                    $newStatus = ($newBalance <= 0.05) ? 'Paid' : 'Partially Paid';
+
+                    $updateInv = $this->pdo->prepare("UPDATE `client_invoices` SET `status` = ?, `balance_due` = ? WHERE `id` = ?");
+                    $updateInv->execute([$newStatus, $newBalance, $transaction['invoice_id']]);
+
+                    // 3. Mark payment task as Completed ONLY if invoice is fully Paid
+                    if ($newStatus === 'Paid') {
+                        $updateTask = $this->pdo->prepare("UPDATE `client_tasks` SET `status` = 'Completed' WHERE `client_id` = ? AND `action_type` = 'payment' AND `status` = 'Pending'");
+                        $updateTask->execute([$transaction['client_id']]);
+                    }
+                }
 
                 // 4. Update project progress
                 $this->recalculateProjectProgress($transaction['client_id']);
@@ -309,16 +319,11 @@ class PaymentService {
         }
 
         // Call refund on adapter
-        if (strpos($transaction['reference'], 'BFT-DEMO-') === 0) {
-            $refundRef = 'REFUND-DEMO-' . time();
-            $success = true;
-        } else {
-            $gatewayAdapter = PaymentFactory::make($gatewayName);
-            $refundRes = $gatewayAdapter->refundPayment($transaction['reference'], $amount, $gatewayConfig);
-            $success = $refundRes['success'];
-            $refundRef = $refundRes['refund_reference'] ?? '';
-            $error = $refundRes['error'] ?? '';
-        }
+        $gatewayAdapter = PaymentFactory::make($gatewayName);
+        $refundRes = $gatewayAdapter->refundPayment($transaction['reference'], $amount, $gatewayConfig);
+        $success = $refundRes['success'];
+        $refundRef = $refundRes['refund_reference'] ?? '';
+        $error = $refundRes['error'] ?? '';
 
         if ($success) {
             // Update transaction status

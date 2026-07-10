@@ -2,6 +2,7 @@ import { Layers } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Projects({ cms = {} }) {
   const [projects, setProjects] = useState([]);
@@ -97,65 +98,83 @@ export default function Projects({ cms = {} }) {
         )}
 
         {/* Projects Grid */}
-        <div className="grid grid-3">
-          {filteredProjects.map((project) => (
-            <article key={project.id} className="project-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <div className="project-img-wrapper" style={{ position: 'relative' }}>
-                <img
-                  src={project.image_url || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80'}
-                  alt={project.title}
-                  className="project-img"
-                  onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80';
-                  }}
-                />
-              </div>
-              <div className="project-content" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between', padding: '24px', textAlign: 'left' }}>
-                <div>
-                  <span className="project-category" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--primary)', display: 'block', marginBottom: '8px' }}>
-                    {project.category}
-                  </span>
-                  <h3 className="project-title" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-primary)', lineHeight: 1.25 }}>
-                    {project.title}
-                  </h3>
-                  <p className="project-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
-                    {project.summary || project.description}
-                  </p>
-
-                  {/* Tech stack badges */}
-                  {project.tech_stack && (
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                      {project.tech_stack.split(',').map((tech, tIdx) => (
-                        <span 
-                          key={tIdx} 
-                          style={{ 
-                            fontSize: '0.7rem', 
-                            padding: '3px 8px', 
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(var(--primary-rgb), 0.05)',
-                            border: '1px solid rgba(var(--primary-rgb), 0.1)',
-                            color: 'var(--primary)',
-                            fontWeight: 600
-                          }}
-                        >
-                          {tech.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+        <motion.div 
+          layout 
+          className="grid grid-3"
+          style={{ display: 'grid' }}
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredProjects.map((project) => (
+              <motion.article 
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                key={project.id} 
+                className="project-card border border-indigo-500/5 dark:border-indigo-500/10 hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-colors shadow-lg hover:shadow-indigo-500/5 rounded-2xl overflow-hidden backdrop-blur-sm bg-white/70 dark:bg-gray-900/40" 
+                style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}
+              >
+                <div className="project-img-wrapper" style={{ position: 'relative', overflow: 'hidden' }}>
+                  <motion.img
+                    src={project.image_url || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80'}
+                    alt={project.title}
+                    className="project-img w-full h-48 object-cover"
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80';
+                    }}
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.3 }}
+                  />
                 </div>
+                <div className="project-content" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between', padding: '24px', textAlign: 'left' }}>
+                  <div>
+                    <span className="project-category" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--primary)', display: 'block', marginBottom: '8px' }}>
+                      {project.category}
+                    </span>
+                    <h3 className="project-title" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-primary)', lineHeight: 1.25 }}>
+                      {project.title}
+                    </h3>
+                    <p className="project-desc" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      {project.summary || project.description}
+                    </p>
 
-                <Link 
-                  to={`/portfolio/${project.id}`} 
-                  className="btn btn-primary" 
-                  style={{ width: '100%', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.85rem', padding: '10px 16px', gap: '8px', cursor: 'pointer' }}
-                >
-                  View Details
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
+                    {/* Tech stack badges */}
+                    {project.tech_stack && (
+                      <div className="flex gap-1.5 flex-wrap mb-5" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                        {project.tech_stack.split(',').map((tech, tIdx) => (
+                          <span 
+                            key={tIdx} 
+                            style={{ 
+                              fontSize: '0.7rem', 
+                              padding: '3px 8px', 
+                              borderRadius: '4px',
+                              backgroundColor: 'rgba(var(--primary-rgb), 0.05)',
+                              border: '1px solid rgba(var(--primary-rgb), 0.1)',
+                              color: 'var(--primary)',
+                              fontWeight: 600
+                            }}
+                          >
+                            {tech.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Link 
+                    to={`/portfolio/${project.id}`} 
+                    className="btn btn-primary w-full inline-flex justify-center items-center gap-2 cursor-pointer shadow-md shadow-indigo-500/10 hover:shadow-indigo-500/20" 
+                    style={{ width: '100%', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.85rem', padding: '10px 16px', gap: '8px', cursor: 'pointer' }}
+                  >
+                    View Details
+                  </Link>
+                </div>
+              </motion.article>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </section>
   );

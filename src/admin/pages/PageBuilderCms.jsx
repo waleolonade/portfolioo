@@ -488,6 +488,7 @@ export default function PageBuilderCms() {
   /* Tabs */
   const tabs = [
     { id: 'layout', label: 'Homepage Builder', icon: <LayoutTemplate size={15} /> },
+    { id: 'services_page', label: 'Services Page Builder', icon: <Layers size={15} /> },
     { id: 'branding', label: 'Brand Identity', icon: <Sparkles size={15} /> },
     { id: 'header', label: 'Header Builder', icon: <Layout size={15} /> },
     { id: 'footer', label: 'Footer Builder', icon: <Layout size={15} /> },
@@ -876,6 +877,169 @@ export default function PageBuilderCms() {
                           <button onClick={() => aiPromptText && handleAiGenerate()} className="btn btn-primary" disabled={aiGenerating || !aiPromptText} style={{ padding: '6px 12px', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                             {aiGenerating ? <span className="cms-spinner" /> : <><Wand2 size={11} /> Generate</>}
                           </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ════════════ SERVICES PAGE BUILDER ════════════ */}
+                  {tab.id === 'services_page' && (
+                    <div className="fade-slide" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (iframeRef.current) {
+                            iframeRef.current.src = `${window.location.origin}${window.location.pathname}#/services`;
+                          }
+                        }} 
+                        className="btn btn-outline" 
+                        style={{ fontSize: '.75rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
+                      >
+                        <Eye size={14} /> Navigate Preview to Services Page
+                      </button>
+
+                      {/* Header Config */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 8, color: 'var(--primary)' }}>Header Config</h4>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>Upper Badge Text</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            value={cmsForm.services_page_badge || ''} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_badge: e.target.value }))} 
+                            placeholder="e.g. Our Expertise"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>Main Title</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            value={cmsForm.services_page_title || ''} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_title: e.target.value }))} 
+                            placeholder="e.g. Engineering Excellence"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>Description Tagline</label>
+                          <textarea 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            rows={3}
+                            value={cmsForm.services_page_subtitle || ''} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_subtitle: e.target.value }))} 
+                            placeholder="We specialize in transforming complex business requirements..."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Layout & Toggles */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)' }}>Layout & Interactive Tools</h4>
+                        
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>Default Layout Style</label>
+                          <select 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            value={cmsForm.services_page_layout_type || 'alternating'} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_layout_type: e.target.value }))}
+                          >
+                            <option value="alternating">Alternating Left/Right Rows</option>
+                            <option value="grid">Multi-column Grid Cards</option>
+                          </select>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.8rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={cmsForm.services_page_show_estimator !== false && cmsForm.services_page_show_estimator !== 'false'} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_show_estimator: e.target.checked }))} 
+                            /> 
+                            Enable Project Price & Timeline Estimator
+                          </label>
+
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.8rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={cmsForm.services_page_show_filters !== false && cmsForm.services_page_show_filters !== 'false'} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_show_filters: e.target.checked }))} 
+                            /> 
+                            Enable Service Category Filter Tabs
+                          </label>
+
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.8rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={cmsForm.services_page_show_tech !== false && cmsForm.services_page_show_tech !== 'false'} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_show_tech: e.target.checked }))} 
+                            /> 
+                            Show Tech Stack Badges on Cards
+                          </label>
+
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.8rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={cmsForm.services_page_show_faq !== false && cmsForm.services_page_show_faq !== 'false'} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_show_faq: e.target.checked }))} 
+                            /> 
+                            Show Quick Question Accordions
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Bottom CTA Block */}
+                      <div>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 8, color: 'var(--primary)' }}>Bottom CTA Block</h4>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>CTA Header</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            value={cmsForm.services_page_cta_title || ''} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_cta_title: e.target.value }))} 
+                            placeholder="Ready to Build Something Extraordinary?"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.8rem' }}>CTA Description</label>
+                          <textarea 
+                            className="form-control" 
+                            style={{ fontSize: '.8rem', padding: '8px 10px' }} 
+                            rows={2}
+                            value={cmsForm.services_page_cta_desc || ''} 
+                            onChange={e => setCmsForm(prev => ({ ...prev, services_page_cta_desc: e.target.value }))} 
+                            placeholder="Let's discuss your project requirements..."
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '.72rem' }}>Primary Button Text</label>
+                            <input 
+                              type="text" 
+                              className="form-control" 
+                              style={{ fontSize: '.8rem', padding: '6px 8px' }} 
+                              value={cmsForm.services_page_cta_btn1 || ''} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_cta_btn1: e.target.value }))} 
+                              placeholder="Start Your Project"
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '.72rem' }}>Secondary Button Text</label>
+                            <input 
+                              type="text" 
+                              className="form-control" 
+                              style={{ fontSize: '.8rem', padding: '6px 8px' }} 
+                              value={cmsForm.services_page_cta_btn2 || ''} 
+                              onChange={e => setCmsForm(prev => ({ ...prev, services_page_cta_btn2: e.target.value }))} 
+                              placeholder="View Case Studies"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

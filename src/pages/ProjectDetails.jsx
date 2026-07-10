@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { ArrowLeft, Award, ExternalLink, Target } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import Footer from '../components/Footer';
-import { ArrowLeft, ExternalLink, Target, Award } from 'lucide-react';
+import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../config';
 
 export default function ProjectDetails() {

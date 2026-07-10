@@ -234,11 +234,7 @@ if ($method === 'POST') {
         $invoiceStmt->execute([$newUserId, 'INV-2026-089', $paidAmount, 0.00, $currency, 'Paid', 'June 10, 2026']);
         $invoiceStmt->execute([$newUserId, 'INV-2026-095', $pendingAmount, $pendingAmount, $currency, 'Pending', 'July 15, 2026']);
 
-        // Seed initial Files
-        $fileStmt = $pdo->prepare("INSERT INTO `client_files` (`client_id`, `filename`, `file_url`, `file_size`, `category`) VALUES (?, ?, ?, ?, ?)");
-        $fileStmt->execute([$newUserId, 'Architecture_System_Specs.pdf', 'uploads/Architecture_System_Specs.pdf', '2.4 MB', 'Specs']);
-        $fileStmt->execute([$newUserId, 'Staging_API_Postman_Collection.json', 'uploads/Staging_API_Postman_Collection.json', '420 KB', 'API Docs']);
-        $fileStmt->execute([$newUserId, 'Service_Level_Agreement_Executed.pdf', 'uploads/Service_Level_Agreement_Executed.pdf', '1.8 MB', 'Contracts']);
+        // Seed initial Files (none by default)
 
         // Seed initial welcoming chat message from Marcus (Admin)
         $chatStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, ?, ?)");

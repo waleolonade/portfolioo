@@ -132,60 +132,50 @@ export default function ClientAuth({ onAuthSuccess }) {
     <div className="page-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
       <Navbar />
       
-      <main style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', position: 'relative' }}>
-        {/* Back button */}
-        <Link to="/" style={{
-          position: 'absolute',
-          top: '24px',
-          left: '24px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '0.9rem',
-          fontWeight: 600,
-          color: 'var(--text-secondary)'
-        }}>
-          <ArrowLeft size={16} /> Back to Home
-        </Link>
+      <main style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', position: 'relative' }}>
+        {/* Animated background glow */}
+        <div style={{ position: 'absolute', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(var(--primary-rgb), 0.15) 0%, transparent 70%)', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }} />
 
         <div className="card" style={{
           width: '100%',
-          maxWidth: '460px',
+          maxWidth: '420px',
           padding: '40px 32px',
           backdropFilter: 'blur(16px)',
           border: '1px solid var(--border)',
-          backgroundColor: 'rgba(var(--bg-secondary-rgb), 0.7)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-          textAlign: 'left'
+          backgroundColor: 'rgba(var(--bg-secondary-rgb), 0.8)',
+          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.1)',
+          borderRadius: '24px',
+          textAlign: 'left',
+          position: 'relative',
+          zIndex: 1
         }}>
           
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
             <div style={{
               width: '56px',
               height: '56px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(var(--primary-rgb), 0.1)',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, rgba(var(--primary-rgb), 0.2), rgba(var(--primary-rgb), 0.05))',
               color: 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              border: '1px solid rgba(var(--primary-rgb), 0.2)'
             }}>
               {isRegister ? <UserPlus size={28} /> : <LogIn size={28} />}
             </div>
           </div>
 
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, textAlign: 'center', marginBottom: '8px', letterSpacing: '-0.3px' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, textAlign: 'center', marginBottom: '6px', color: 'var(--text-primary)' }}>
             {isRegister 
-              ? (regStep === 1 ? 'Register Workspace (1/2)' : 'Project Details (2/2)') 
-              : 'Client Login'}
+              ? (regStep === 1 ? 'Create Workspace' : 'Project Specs') 
+              : 'Client Portal Login'}
           </h2>
           
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '28px', lineHeight: 1.45 }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '30px' }}>
             {isRegister 
-              ? (regStep === 1 
-                  ? 'Set up secure credentials for your digital workspace.' 
-                  : 'Specify your build category, target dates, and scope budget.') 
-              : 'Sign in to access your project workspace, files, and chat.'}
+              ? (regStep === 1 ? 'Step 1 of 2: Secure credentials' : 'Step 2 of 2: Scope & details') 
+              : 'Sign in to access your project dashboard.'}
           </p>
 
           {error && (
@@ -196,10 +186,9 @@ export default function ClientAuth({ onAuthSuccess }) {
               backgroundColor: 'rgba(239, 68, 68, 0.08)',
               color: 'var(--error)',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
-              marginBottom: '24px',
-              fontSize: '0.82rem',
-              lineHeight: 1.4,
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '0.85rem',
               border: '1px solid rgba(239, 68, 68, 0.2)'
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0 }} />
@@ -215,10 +204,9 @@ export default function ClientAuth({ onAuthSuccess }) {
               backgroundColor: 'rgba(16, 185, 129, 0.08)',
               color: 'var(--success)',
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
-              marginBottom: '24px',
-              fontSize: '0.82rem',
-              lineHeight: 1.4,
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '0.85rem',
               border: '1px solid rgba(16, 185, 129, 0.2)'
             }}>
               <Terminal size={16} style={{ flexShrink: 0 }} />
@@ -227,63 +215,65 @@ export default function ClientAuth({ onAuthSuccess }) {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* ════ STEP 1: CREDENTIALS ════ */}
             {(!isRegister || regStep === 1) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="username">Workspace Username</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>Workspace Username</label>
                   <input
                     type="text"
-                    id="username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="form-control"
                     placeholder="e.g. logistics_corp"
+                    style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
                     disabled={loading}
                     required
                   />
                 </div>
 
                 {isRegister && (
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="email">Notification Email</label>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>Notification Email</label>
                     <input
                       type="email"
-                      id="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="form-control"
                       placeholder="client@company.com"
+                      style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
                       disabled={loading}
                       required
                     />
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="password">Security Password</label>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Security Password</label>
+                    {!isRegister && <span style={{ fontSize: '0.75rem', color: 'var(--primary)', cursor: 'pointer' }}>Forgot?</span>}
+                  </div>
                   <input
                     type="password"
-                    id="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="form-control"
                     placeholder="••••••••"
+                    style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
                     disabled={loading}
                     required
                   />
                 </div>
 
                 {isRegister && (
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="confirmPassword">Confirm Password</label>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>Confirm Password</label>
                     <input
                       type="password"
-                      id="confirmPassword"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="form-control"
                       placeholder="••••••••"
+                      style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
                       disabled={loading}
                       required
                     />
@@ -292,111 +282,101 @@ export default function ClientAuth({ onAuthSuccess }) {
               </div>
             )}
 
-            {/* ════ STEP 2: PROJECT SPECS ════ */}
             {isRegister && regStep === 2 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="projectTitle">Project Title</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>Project Title</label>
                   <input
                     type="text"
-                    id="projectTitle"
                     value={projectTitle}
                     onChange={(e) => setProjectTitle(e.target.value)}
                     className="form-control"
-                    placeholder="e.g. Logistics Portal App"
+                    placeholder="e.g. Fintech App"
+                    style={{ padding: '10px 14px', borderRadius: '8px' }}
                     disabled={loading}
                     required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="projectStack">Platform Category / Stack</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>Platform Stack</label>
                   <select
-                    id="projectStack"
                     value={projectStack}
                     onChange={(e) => setProjectStack(e.target.value)}
                     className="form-control"
-                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '10px' }}
+                    style={{ padding: '10px 14px', borderRadius: '8px' }}
                     disabled={loading}
                   >
-                    <option value="web_app">Next.js / React Web App</option>
-                    <option value="mobile_app">Expo / React Native Mobile App</option>
-                    <option value="backend">Node.js Backend / API</option>
-                    <option value="php_site">PHP / Laravel Website</option>
-                    <option value="fullstack">Full-Stack Application</option>
+                    <option value="web_app">Next.js Web App</option>
+                    <option value="mobile_app">React Native Mobile App</option>
+                    <option value="backend">Node.js API</option>
+                    <option value="php_site">PHP Website</option>
+                    <option value="fullstack">Full-Stack System</option>
                   </select>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <div style={{ flex: 1.5 }}>
-                    <label className="form-label" htmlFor="projectBudget">Project Budget</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>Budget</label>
                     <input
                       type="number"
-                      id="projectBudget"
                       value={projectBudget}
                       onChange={(e) => setProjectBudget(e.target.value)}
                       className="form-control"
                       placeholder="4000"
+                      style={{ padding: '10px 14px', borderRadius: '8px' }}
                       disabled={loading}
                       required
                     />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label className="form-label" htmlFor="currency">Currency</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>Currency</label>
                     <select
-                      id="currency"
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                       className="form-control"
-                      style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '10px' }}
+                      style={{ padding: '10px 14px', borderRadius: '8px' }}
                       disabled={loading}
                     >
-                      <option value="$">USD ($)</option>
-                      <option value="₦">NGN (₦)</option>
-                      <option value="€">EUR (€)</option>
-                      <option value="£">GBP (£)</option>
-                      <option value="C$">CAD (C$)</option>
+                      <option value="$">USD</option>
+                      <option value="₦">NGN</option>
+                      <option value="€">EUR</option>
+                      <option value="£">GBP</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="targetDate">Target Launch Date</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>Target Date</label>
                   <input
                     type="text"
-                    id="targetDate"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
                     className="form-control"
                     placeholder="August 15, 2026"
+                    style={{ padding: '10px 14px', borderRadius: '8px' }}
                     disabled={loading}
                     required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="projectDesc">Short Description (Optional)</label>
-                  <textarea
-                    id="projectDesc"
-                    value={projectDesc}
-                    onChange={(e) => setProjectDesc(e.target.value)}
-                    className="form-control"
-                    placeholder="Brief description of your business goal..."
-                    rows={2}
-                    style={{ fontSize: '0.85rem', resize: 'vertical' }}
-                    disabled={loading}
                   />
                 </div>
               </div>
             )}
 
-            <div style={{ marginTop: '24px', display: 'flex', gap: '10px' }}>
+            <div style={{ marginTop: '28px', display: 'flex', gap: '12px' }}>
               {isRegister && regStep === 2 && (
                 <button
                   type="button"
                   onClick={() => setRegStep(1)}
-                  className="btn btn-outline"
-                  style={{ flex: 1, padding: '12px', fontWeight: 700 }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
                   disabled={loading}
                 >
                   Back
@@ -404,44 +384,56 @@ export default function ClientAuth({ onAuthSuccess }) {
               )}
               <button
                 type="submit"
-                className="btn btn-primary"
-                style={{ flex: 2, padding: '12px', fontWeight: 700 }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all"
+                style={{
+                  flex: 2,
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '0.95rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                }}
                 disabled={loading}
               >
                 {loading 
                   ? 'Processing...' 
                   : isRegister 
-                    ? (regStep === 1 ? 'Next: Project Details' : 'Create Workspace') 
-                    : 'Sign In'}
+                    ? (regStep === 1 ? 'Continue to Specs' : 'Create Workspace') 
+                    : 'Secure Sign In'}
               </button>
             </div>
           </form>
 
-          <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '20px', textAlign: 'center' }}>
+          <div style={{ marginTop: '24px', textAlign: 'center' }}>
             <button
               onClick={() => { setError(null); setIsRegister(!isRegister); setRegStep(1); }}
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--primary)',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer'
+                color: 'var(--text-muted)',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'color 0.2s'
               }}
+              onMouseOver={(e) => e.target.style.color = 'var(--primary)'}
+              onMouseOut={(e) => e.target.style.color = 'var(--text-muted)'}
             >
-              {isRegister ? 'Already have a project? Log in here' : 'New Client? Register project workspace'}
+              {isRegister 
+                ? 'Already have an account? Log in' 
+                : 'Need a new workspace? Register here'}
             </button>
           </div>
-
-          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          
+          <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.8 }}>
             <Shield size={12} />
-            <span>Encrypted with SHA-256 signatures</span>
+            <span>End-to-End Encrypted via SHA-256</span>
           </div>
 
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 }

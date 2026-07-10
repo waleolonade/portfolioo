@@ -445,7 +445,6 @@ try {
     $gwInsert->execute(['stripe', 'Stripe']);
     $gwInsert->execute(['monnify', 'Monnify']);
 
-    // Add optional columns to client_projects and client_invoices
     try {
         $pdo->exec("ALTER TABLE `client_invoices` ADD `balance_due` DECIMAL(10,2) DEFAULT 0.00;");
     } catch (Exception $e) {}
@@ -460,6 +459,46 @@ try {
     } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE `users` ADD `email` VARCHAR(150) DEFAULT NULL;");
+    } catch (Exception $e) {}
+
+    // Ensure wallets and wallet transactions tables exist
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `client_wallets` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `client_id` INT NOT NULL,
+            `balance` DECIMAL(12,2) DEFAULT 0.00,
+            `currency` VARCHAR(10) DEFAULT 'NGN',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (`client_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `wallet_transactions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `wallet_id` INT NOT NULL,
+            `type` VARCHAR(20) NOT NULL,
+            `amount` DECIMAL(12,2) NOT NULL,
+            `reference` VARCHAR(100) NOT NULL,
+            `status` VARCHAR(20) NOT NULL,
+            `description` VARCHAR(255) DEFAULT '',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (`wallet_id`) REFERENCES `client_wallets`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    } catch (Exception $e) {}
+
+    // Add optional columns to payment_transactions
+    try {
+        $pdo->exec("ALTER TABLE `payment_transactions` ADD `payment_option` VARCHAR(50) DEFAULT NULL;");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `payment_transactions` ADD `provider_reference` VARCHAR(100) DEFAULT '';");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `payment_transactions` ADD `fee` DECIMAL(10,2) DEFAULT 0.00;");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `payment_transactions` ADD `settlement_amount` DECIMAL(12,2) DEFAULT 0.00;");
     } catch (Exception $e) {}
 
 } catch (PDOException $e) {

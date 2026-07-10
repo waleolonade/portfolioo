@@ -220,7 +220,7 @@ export default function Footer({ cms = {} }) {
               </p>
             </div>
             <form onSubmit={handleSubscribe} style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px', width: '100%' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <input 
                   type="email" 
                   value={email}

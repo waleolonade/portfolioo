@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
+@import "tailwindcss" layer(utilities);
+@import "tailwindcss/theme" layer(theme);
+
+@custom-variant dark (&:where(.dark-theme, .dark-theme *, .dark, .dark *));
+
 :root {
   /* Light Palette */
   --bg-primary: #f8fafc;

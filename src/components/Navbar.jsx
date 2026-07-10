@@ -40,8 +40,10 @@ export default function Navbar({ cms = {} }) {
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark-theme');
+      root.classList.add('dark');
     } else {
       root.classList.remove('dark-theme');
+      root.classList.remove('dark');
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
@@ -123,7 +125,7 @@ export default function Navbar({ cms = {} }) {
   );
 
   const renderActions = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
       {isToggleVisible && (
         <button onClick={toggleTheme} className="btn btn-outline nav-theme-btn" aria-label="Toggle theme">
           {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
@@ -282,7 +284,7 @@ export default function Navbar({ cms = {} }) {
           display: flex;
         }
         @media (max-width: 768px) {
-          .desktop-only-flex, .desktop-only {
+          .desktop-only-flex, .desktop-only, .nav-actions {
             display: none !important;
           }
           .nav-container-centered {

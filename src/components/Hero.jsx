@@ -1,5 +1,6 @@
 import { ArrowRight, Award, ChevronDown, Rocket, Users, Zap } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 
 /* ─── Animated Counter Hook ─── */
 function useCountUp(target, duration = 2000, startOnMount = true) {
@@ -160,6 +161,55 @@ function ParticleField() {
   );
 }
 
+/* ─── Animation Configs ─── */
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 24, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 100,
+      damping: 16
+    }
+  }
+};
+
+const statsContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.5
+    }
+  }
+};
+
+const statItemVariants = {
+  hidden: { scale: 0.9, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 120,
+      damping: 14
+    }
+  }
+};
+
 /* ─── HERO COMPONENT ─── */
 export default function Hero({ cms = {} }) {
   const typingPhrases = [
@@ -194,53 +244,87 @@ export default function Hero({ cms = {} }) {
         <div className="hero-grid">
 
           {/* ─── Left Column: Copy ─── */}
-          <div className="hero-text-col">
-            <div className="hero-badge">
-              <Rocket size={14} />
+          <motion.div 
+            className="hero-text-col"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div className="hero-badge" variants={itemVariants}>
+              <Rocket size={14} className="animate-pulse" />
               <span>Building Websites, Mobile Apps & Digital Solutions That Drive Growth</span>
-            </div>
+            </motion.div>
 
-            <h1 className="hero-headline">
+            <motion.h1 className="hero-headline" variants={itemVariants}>
               {cms.home_hero_title || 'Transform Your Ideas Into Powerful'}{' '}
-              <span className="hero-gradient-text">Digital Solutions</span>
-            </h1>
+              <span className="hero-gradient-text bg-gradient-to-r from-indigo-500 to-teal-400 bg-clip-text text-transparent">Digital Solutions</span>
+            </motion.h1>
 
-            <p className="hero-subline">
+            <motion.p className="hero-subline" variants={itemVariants}>
               We build{' '}
               <span className="hero-typed-text">
                 {typedText}
                 <span className="hero-cursor">|</span>
               </span>
-            </p>
+            </motion.p>
 
-            <p className="hero-description">
+            <motion.p className="hero-description" variants={itemVariants}>
               {cms.home_hero_subtitle || 'Professional Website Development, Mobile App Development, UI/UX Design, Backend APIs, Networking & IT Solutions tailored for businesses that demand quality.'}
-            </p>
+            </motion.p>
 
             {/* CTAs */}
-            <div className="hero-btns-wrapper">
-              <button onClick={() => scrollToSection('projects')} className="btn btn-primary hero-cta-primary">
-                {cms.home_hero_cta_primary || 'View Our Work'} <ArrowRight size={16} />
-              </button>
-              <button onClick={() => scrollToSection('contact')} className="btn btn-outline hero-cta-secondary">
+            <motion.div className="hero-btns-wrapper" variants={itemVariants} style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <motion.button 
+                onClick={() => scrollToSection('projects')} 
+                className="btn btn-primary hero-cta-primary flex items-center gap-2 group shadow-lg hover:shadow-indigo-500/20"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {cms.home_hero_cta_primary || 'View Our Work'}{' '}
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+              <motion.button 
+                onClick={() => scrollToSection('contact')} 
+                className="btn btn-outline hero-cta-secondary"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 {cms.home_hero_cta_secondary || 'Get a Free Quote'}
-              </button>
-            </div>
+              </motion.button>
+              <motion.a 
+                href="/resume.pdf" 
+                download
+                className="btn btn-outline flex items-center gap-2 border-indigo-500/30 hover:border-indigo-500 text-indigo-400"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                Download CV
+              </motion.a>
+            </motion.div>
 
             {/* Trust line */}
-            <div className="hero-trust-line">
+            <motion.div className="hero-trust-line" variants={itemVariants}>
               <div className="hero-trust-avatars">
                 <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=60&q=80" alt="Client" />
                 <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80" alt="Client" />
                 <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&q=80" alt="Client" />
               </div>
               <span>{cms.home_trusted_by_title || <>Trusted by <strong>20+ clients</strong> & engineering teams</>}</span>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* ─── Right Column: Code Terminal Visual ─── */}
-          <div className="hero-visual-col">
-            <div className="hero-terminal">
+          <motion.div 
+            className="hero-visual-col"
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 80, damping: 16, delay: 0.3 }}
+          >
+            <motion.div 
+              className="hero-terminal border border-indigo-500/10 backdrop-blur-md"
+              whileHover={{ rotateY: -3, rotateX: 3, scale: 1.01 }}
+              style={{ transformStyle: "preserve-3d" }}
+            >
               <div className="hero-terminal-bar">
                 <div className="hero-terminal-dots">
                   <span style={{ background: '#ef4444' }} />
@@ -265,39 +349,45 @@ export default function Hero({ cms = {} }) {
               </div>
 
               {/* Floating tech badges on the terminal */}
-              <div className="hero-float-badge hero-float-badge--1">React</div>
-              <div className="hero-float-badge hero-float-badge--2">Node.js</div>
-              <div className="hero-float-badge hero-float-badge--3">MySQL</div>
-              <div className="hero-float-badge hero-float-badge--4">AWS</div>
-            </div>
-          </div>
+              <motion.div className="hero-float-badge hero-float-badge--1" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>React</motion.div>
+              <motion.div className="hero-float-badge hero-float-badge--2" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.5 }}>Node.js</motion.div>
+              <motion.div className="hero-float-badge hero-float-badge--3" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 3.8, ease: "easeInOut", delay: 1 }}>MySQL</motion.div>
+              <motion.div className="hero-float-badge hero-float-badge--4" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 0.3 }}>AWS</motion.div>
+            </motion.div>
+          </motion.div>
 
         </div>
 
         {/* ─── Statistics Counter Row ─── */}
-        <div className="hero-stats-grid" ref={ref1}>
-          <div className="hero-stat-item">
+        <motion.div 
+          className="hero-stats-grid" 
+          ref={ref1}
+          variants={statsContainerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="hero-stat-item" variants={statItemVariants}>
             <div className="hero-stat-icon"><Users size={20} /></div>
             <div>
               <strong className="hero-stat-value">{count1}+</strong>
               <span className="hero-stat-label">Happy Clients</span>
             </div>
-          </div>
-          <div className="hero-stat-item" ref={ref2}>
+          </motion.div>
+          <motion.div className="hero-stat-item" ref={ref2} variants={statItemVariants}>
             <div className="hero-stat-icon"><Zap size={20} /></div>
             <div>
               <strong className="hero-stat-value">{count2}+</strong>
               <span className="hero-stat-label">Deployments</span>
             </div>
-          </div>
-          <div className="hero-stat-item" ref={ref3}>
+          </motion.div>
+          <motion.div className="hero-stat-item" ref={ref3} variants={statItemVariants}>
             <div className="hero-stat-icon"><Award size={20} /></div>
             <div>
               <strong className="hero-stat-value">{count3}+</strong>
               <span className="hero-stat-label">Years Experience</span>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Scroll indicator */}
         <div className="hero-scroll-indicator" onClick={() => scrollToSection('services')}>

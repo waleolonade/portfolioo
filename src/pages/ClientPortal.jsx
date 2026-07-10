@@ -7,7 +7,7 @@ import { payWithPaystack, payWithFlutterwave, payWithStripe, payWithMonnify } fr
 import { 
   FolderOpen, DollarSign, Download, MessageSquare, Send, 
   FileText, CheckCircle2, Circle, LogOut, ArrowRight, Clock, 
-  Sparkles, Upload, ShieldCheck, RefreshCw, CreditCard, X, Loader, AlertTriangle
+  Sparkles, Upload, ShieldCheck, RefreshCw, CreditCard, X, Loader, AlertTriangle, Bell
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -24,6 +24,8 @@ export default function ClientPortal() {
   
   // UI States
   const [activeTab, setActiveTab] = useState('admin'); // 'admin' or 'bot'
+  const [leftTab, setLeftTab] = useState('overview'); // 'overview' | 'files' | 'invoices' | 'contracts'
+  const [showNotifications, setShowNotifications] = useState(false);
   const [inputMsg, setInputMsg] = useState('');
   const [taskInputs, setTaskInputs] = useState({ briefText: '', feedbackText: '' });
   const [loading, setLoading] = useState(false);
@@ -412,6 +414,35 @@ export default function ClientPortal() {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="btn btn-outline" 
+                  style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+                >
+                  <Bell size={18} />
+                  <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: 'var(--accent)', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    2
+                  </span>
+                </button>
+                {showNotifications && (
+                  <div style={{ position: 'absolute', top: '120%', right: 0, width: '300px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 50, padding: '10px' }}>
+                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>Notifications</div>
+                    <div style={{ fontSize: '0.85rem', padding: '8px', borderBottom: '1px solid var(--bg-secondary)' }}>
+                      <strong>Setup Complete</strong>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Your workspace has been fully configured.</p>
+                      <small style={{ color: 'var(--primary)', marginTop: '4px', display: 'block' }}>2 hours ago</small>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', padding: '8px' }}>
+                      <strong>New Invoice Generated</strong>
+                      <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>An invoice for Milestone 1 is ready.</p>
+                      <small style={{ color: 'var(--primary)', marginTop: '4px', display: 'block' }}>1 day ago</small>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button 
                 onClick={handleManualRefresh} 
                 className="btn btn-outline" 
@@ -441,11 +472,68 @@ export default function ClientPortal() {
             {/* Left Column: Progress, Interactive Tasks & Documents */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
               
+              {/* Left Tabs */}
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '10px', overflowX: 'auto' }}>
+                <button
+                  onClick={() => setLeftTab('overview')}
+                  style={{
+                    padding: '8px 16px', border: 'none', background: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                    color: leftTab === 'overview' ? 'var(--primary)' : 'var(--text-muted)',
+                    borderBottom: leftTab === 'overview' ? '2px solid var(--primary)' : '2px solid transparent'
+                  }}
+                >
+                  Project Overview
+                </button>
+                <button
+                  onClick={() => setLeftTab('contracts')}
+                  style={{
+                    padding: '8px 16px', border: 'none', background: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                    color: leftTab === 'contracts' ? 'var(--primary)' : 'var(--text-muted)',
+                    borderBottom: leftTab === 'contracts' ? '2px solid var(--primary)' : '2px solid transparent'
+                  }}
+                >
+                  Contracts & NDAs
+                </button>
+                <button
+                  onClick={() => setLeftTab('files')}
+                  style={{
+                    padding: '8px 16px', border: 'none', background: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                    color: leftTab === 'files' ? 'var(--primary)' : 'var(--text-muted)',
+                    borderBottom: leftTab === 'files' ? '2px solid var(--primary)' : '2px solid transparent'
+                  }}
+                >
+                  Files & Assets
+                </button>
+                <button
+                  onClick={() => setLeftTab('invoices')}
+                  style={{
+                    padding: '8px 16px', border: 'none', background: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                    color: leftTab === 'invoices' ? 'var(--primary)' : 'var(--text-muted)',
+                    borderBottom: leftTab === 'invoices' ? '2px solid var(--primary)' : '2px solid transparent'
+                  }}
+                >
+                  Invoices
+                </button>
+              </div>
+
+              {leftTab === 'overview' && (
+                <>
               {/* Project Card */}
               <div className="card" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <FolderOpen size={20} style={{ color: 'var(--primary)' }} /> Project Delivery Status
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <FolderOpen size={20} style={{ color: 'var(--primary)' }} /> Project Delivery Status
+                  </h3>
+                  <a 
+                    href="https://calendly.com" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="btn btn-outline"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', margin: 0, border: '1px solid var(--primary)', color: 'var(--primary)' }}
+                  >
+                    <Clock size={14} /> Schedule Meeting
+                  </a>
+                </div>
                 
                 {project ? (
                   <div style={{ marginBottom: '20px' }}>
@@ -649,7 +737,11 @@ export default function ClientPortal() {
                 </div>
               </div>
 
+              </>
+              )}
+
               {/* Asset Files Card */}
+              {leftTab === 'files' && (
               <div className="card" style={{ padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -695,8 +787,10 @@ export default function ClientPortal() {
                   )}
                 </div>
               </div>
+              )}
 
               {/* Invoices Card */}
+              {leftTab === 'invoices' && (
               <div className="card" style={{ padding: '28px' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <DollarSign size={20} style={{ color: 'var(--accent)' }} /> Invoice Records
@@ -759,6 +853,44 @@ export default function ClientPortal() {
                   </table>
                 </div>
               </div>
+              )}
+
+              {/* Contracts Card */}
+              {leftTab === 'contracts' && (
+              <div className="card" style={{ padding: '28px' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FileText size={20} style={{ color: 'var(--primary)' }} /> Contracts & NDAs
+                </h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="badge" style={{ fontSize: '0.7rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>Signed</span>
+                      <div>
+                        <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)', display: 'block' }}>Master Service Agreement (MSA)</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Signed on Jan 12, 2024</span>
+                      </div>
+                    </div>
+                    <button className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Download size={14} /> PDF
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span className="badge" style={{ fontSize: '0.7rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>Signed</span>
+                      <div>
+                        <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)', display: 'block' }}>Non-Disclosure Agreement (NDA)</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Signed on Jan 10, 2024</span>
+                      </div>
+                    </div>
+                    <button className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Download size={14} /> PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
 
             </div>
 
