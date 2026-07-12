@@ -257,14 +257,22 @@ export default function Hero({ cms = {} }) {
 
             <motion.h1 className="hero-headline" variants={itemVariants}>
               {cms.home_hero_title || 'Transform Your Ideas Into Powerful'}{' '}
-              <span className="hero-gradient-text bg-gradient-to-r from-indigo-500 to-teal-400 bg-clip-text text-transparent">Digital Solutions</span>
+              <span className="text-blue-600 dark:text-blue-500">Digital Solutions</span>
             </motion.h1>
 
             <motion.p className="hero-subline" variants={itemVariants}>
               We build{' '}
-              <span className="hero-typed-text">
+              <span 
+                className="hero-typed-text"
+                style={typedText.includes('E-commerce Platforms') ? { color: '#38bdf8' } : {}}
+              >
                 {typedText}
-                <span className="hero-cursor">|</span>
+                <span 
+                  className="hero-cursor"
+                  style={typedText.includes('E-commerce Platforms') ? { color: '#38bdf8' } : {}}
+                >
+                  |
+                </span>
               </span>
             </motion.p>
 
@@ -390,7 +398,7 @@ export default function Hero({ cms = {} }) {
         </motion.div>
 
         {/* Scroll indicator */}
-        <div className="hero-scroll-indicator" onClick={() => scrollToSection('services')}>
+        <div className="hero-scroll-indicator" onClick={() => scrollToSection('contact')}>
           <ChevronDown size={20} />
         </div>
       </div>

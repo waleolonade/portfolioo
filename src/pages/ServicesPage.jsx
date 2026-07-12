@@ -245,7 +245,8 @@ const ServicesPage = () => {
             <div className="tech-grid">
               {techStack.map((tech, index) => (
                 <span key={index} className="tech-item">
-                  {tech.name} <span className="years">({tech.years})</span>
+                  {tech.name}
+                  {tech.years && <span className="years"> ({tech.years})</span>}
                 </span>
               ))}
             </div>
@@ -265,36 +266,42 @@ const ServicesPage = () => {
                   </h3>
                   <span className="year-tag">{project.year}</span>
                 </div>
-                 <div className="metrics-grid">
-                   {project.metrics.map((metric, idx) => (
-                     <div key={idx} className="metric-box">
-                       <div className="metric-header">
-                         <i className={`fas ${metric.icon}`}></i>
-                         <strong className="metric-value">{metric.value}</strong>
+                 {project.metrics && project.metrics.length > 0 && (
+                   <div className="metrics-grid">
+                     {project.metrics.map((metric, idx) => (
+                       <div key={idx} className="metric-box">
+                         <div className="metric-header">
+                           <i className={`fas ${metric.icon}`}></i>
+                           <strong className="metric-value">{metric.value}</strong>
+                         </div>
+                         <span className="metric-label">{metric.label}</span>
                        </div>
-                       <span className="metric-label">{metric.label}</span>
-                     </div>
-                   ))}
-                 </div>
+                     ))}
+                   </div>
+                 )}
                 <p>{project.description}</p>
-                <div className="tech-used">
-                  {project.tech.map((t, idx) => (
-                    <span key={idx}>{t}</span>
-                  ))}
-                </div>
-                <div className="links">
-                  {project.links.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      onClick={(e) => handleLinkClick(e, link.url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <i className={`fas ${link.icon}`}></i> {link.label}
-                    </a>
-                  ))}
-                </div>
+                 {project.tech && project.tech.length > 0 && (
+                   <div className="tech-used">
+                     {project.tech.map((t, idx) => (
+                       <span key={idx}>{t}</span>
+                     ))}
+                   </div>
+                 )}
+                 {project.links && project.links.length > 0 && (
+                   <div className="links">
+                     {project.links.map((link, idx) => (
+                       <a
+                         key={idx}
+                         href={link.url}
+                         onClick={(e) => handleLinkClick(e, link.url)}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                       >
+                         <i className={`fas ${link.icon}`}></i> {link.label}
+                       </a>
+                     ))}
+                   </div>
+                 )}
               </div>
             ))}
           </section>
@@ -309,11 +316,13 @@ const ServicesPage = () => {
                   <div className="period">{exp.period}</div>
                   <div className="details">
                     <h4>{exp.title} <span className="company">· {exp.company}</span></h4>
-                    <ul>
-                      {exp.highlights.map((point, idx) => (
-                        <li key={idx}>{point}</li>
-                      ))}
-                    </ul>
+                    {exp.highlights && exp.highlights.length > 0 && (
+                      <ul>
+                        {exp.highlights.map((point, idx) => (
+                          <li key={idx}>{point}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               ))}

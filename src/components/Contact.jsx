@@ -22,7 +22,8 @@ export default function Contact({ cms = {} }) {
   // Tab 2: Quote Form State
   const [quoteForm, setQuoteForm] = useState({
     name: '', email: '', company: '', project_type: 'Website Development',
-    budget: '$5,000 - $10,000', timeline: '1 - 3 months', message: ''
+    budget: '$5,000 - $10,000', timeline: '1 - 3 months', message: '',
+    custom_project_type: '', custom_budget: '', custom_timeline: ''
   });
 
   // Tab 3: Booking Form State
@@ -43,10 +44,13 @@ export default function Contact({ cms = {} }) {
     if (quoteForm.project_type === 'Software & Web Applications') base = 2500;
     if (quoteForm.project_type === 'Networking & IT Solutions') base = 1000;
     if (quoteForm.project_type === 'Maintenance & Support') base = 300;
+    if (quoteForm.project_type === 'Other / Custom Solution') base = 2000;
 
     let multiplier = 1.0;
-    if (quoteForm.timeline === 'Immediate') multiplier = 1.25;
-    if (quoteForm.timeline === '3 - 6 months') multiplier = 0.9;
+    // Allow custom timeline base estimate (fallback multiplier to 1.0)
+    const activeTimeline = quoteForm.timeline === 'Other (Specify)' ? '1 - 3 months' : quoteForm.timeline;
+    if (activeTimeline === 'Immediate') multiplier = 1.25;
+    if (activeTimeline === '3 - 6 months') multiplier = 0.9;
 
     return Math.round(base * multiplier);
   })();
@@ -81,7 +85,7 @@ export default function Contact({ cms = {} }) {
         
         // Reset corresponding form
         if (typeName === 'message') setMsgForm({ name: '', email: '', subject: '', message: '' });
-        if (typeName === 'quote') setQuoteForm({ name: '', email: '', company: '', project_type: 'Website Development', budget: '$5,000 - $10,000', timeline: '1 - 3 months', message: '' });
+        if (typeName === 'quote') setQuoteForm({ name: '', email: '', company: '', project_type: 'Website Development', budget: '$5,000 - $10,000', timeline: '1 - 3 months', message: '', custom_project_type: '', custom_budget: '', custom_timeline: '' });
         if (typeName === 'booking') setBookingForm({ name: '', email: '', subject: 'Project Discussion', booking_date: '', booking_time: '', message: '' });
       })
       .catch(err => {
@@ -96,11 +100,24 @@ export default function Contact({ cms = {} }) {
 
   const handleQuoteSubmit = (e) => {
     e.preventDefault();
+    const projectLabel = quoteForm.project_type === 'Other / Custom Solution' 
+      ? (quoteForm.custom_project_type || 'Custom Solution') 
+      : quoteForm.project_type;
+    const budgetLabel = quoteForm.budget === 'Other (Specify)' 
+      ? (quoteForm.custom_budget || 'Custom Budget') 
+      : quoteForm.budget;
+    const timelineLabel = quoteForm.timeline === 'Other (Specify)' 
+      ? (quoteForm.custom_timeline || 'Custom Timeline') 
+      : quoteForm.timeline;
+
     const payload = {
       ...quoteForm,
       type: 'quote',
-      subject: `Project Estimate: ${quoteForm.project_type}`,
-      message: `Project Type: ${quoteForm.project_type}. Budget Range: ${quoteForm.budget}. Timeline: ${quoteForm.timeline}. Details: ${quoteForm.message}. Est: $${estimate}`
+      project_type: projectLabel,
+      budget: budgetLabel,
+      timeline: timelineLabel,
+      subject: `Project Estimate: ${projectLabel}`,
+      message: `Project Type: ${projectLabel}. Budget Range: ${budgetLabel}. Timeline: ${timelineLabel}. Details: ${quoteForm.message}. Est: $${estimate}`
     };
     submitForm(`${API_BASE_URL}/inquiries.php`, payload, 'quote');
   };
@@ -382,8 +399,8 @@ export default function Contact({ cms = {} }) {
 
                       <div className="form-group">
                         <label className="form-label">Project Type</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                          {['Website Development', 'Mobile App Development', 'UI/UX Design', 'Backend Development & API Integration', 'E-commerce Solutions', 'Networking & IT Solutions'].map(type => (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                          {['Website Development', 'Mobile App Development', 'UI/UX Design', 'Backend Development & API Integration', 'E-commerce Solutions', 'Networking & IT Solutions', 'Other / Custom Solution'].map(type => (
                             <SelectionCard 
                               key={type} 
                               label={type} 
@@ -394,11 +411,28 @@ export default function Contact({ cms = {} }) {
                         </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '20px' }}>
+                      {quoteForm.project_type === 'Other / Custom Solution' && (
+                        <div className="form-group" style={{ marginTop: '16px' }}>
+                          <label className="form-label" htmlFor="q_custom_type">Please Specify Project Type</label>
+                          <input
+                            type="text"
+                            id="q_custom_type"
+                            name="custom_project_type"
+                            value={quoteForm.custom_project_type || ''}
+                            onChange={handleQuoteChange}
+                            className="form-control"
+                            placeholder="e.g. AI SaaS, ERP, Automation script..."
+                            required
+                            disabled={status.submitting}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '20px', marginTop: '20px' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Target Budget</label>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {['$1,000 - $5,000', '$5,000 - $10,000', '$10,000 - $25,000', '$25,000+'].map(budget => (
+                            {['$1,000 - $5,000', '$5,000 - $10,000', '$10,000 - $25,000', '$25,000+', 'Other (Specify)'].map(budget => (
                               <SelectionCard 
                                 key={budget} 
                                 label={budget} 
@@ -411,7 +445,7 @@ export default function Contact({ cms = {} }) {
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">Target Timeline</label>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {['Immediate', '1 - 3 months', '3 - 6 months'].map(timeline => (
+                            {['Immediate', '1 - 3 months', '3 - 6 months', 'Other (Specify)'].map(timeline => (
                               <SelectionCard 
                                 key={timeline} 
                                 label={timeline} 
@@ -423,17 +457,58 @@ export default function Contact({ cms = {} }) {
                         </div>
                       </div>
 
+                      {(quoteForm.budget === 'Other (Specify)' || quoteForm.timeline === 'Other (Specify)') && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                          {quoteForm.budget === 'Other (Specify)' ? (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" htmlFor="q_custom_budget">Specify Custom Budget</label>
+                              <input
+                                type="text"
+                                id="q_custom_budget"
+                                name="custom_budget"
+                                value={quoteForm.custom_budget || ''}
+                                onChange={handleQuoteChange}
+                                className="form-control"
+                                placeholder="e.g. Under $1,000, $50k+..."
+                                required
+                                disabled={status.submitting}
+                              />
+                            </div>
+                          ) : <div />}
+                          
+                          {quoteForm.timeline === 'Other (Specify)' ? (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" htmlFor="q_custom_timeline">Specify Custom Timeline</label>
+                              <input
+                                type="text"
+                                id="q_custom_timeline"
+                                name="custom_timeline"
+                                value={quoteForm.custom_timeline || ''}
+                                onChange={handleQuoteChange}
+                                className="form-control"
+                                placeholder="e.g. 2 weeks, 1 year..."
+                                required
+                                disabled={status.submitting}
+                              />
+                            </div>
+                          ) : <div />}
+                        </div>
+                      )}
+
                       <div className="form-group">
-                        <label className="form-label" htmlFor="q_msg">Project Requirements Details</label>
+                        <label className="form-label" htmlFor="q_msg">
+                          {quoteForm.project_type === 'Other / Custom Solution' ? "Describe What You Want (Project Details)" : "Project Requirements Details"}
+                        </label>
                         <textarea
                           id="q_msg"
                           name="message"
                           value={quoteForm.message}
                           onChange={handleQuoteChange}
                           className="form-control"
-                          placeholder="Detail database integrations, specific screen requirements, etc."
+                          placeholder={quoteForm.project_type === 'Other / Custom Solution' ? "Describe your project requirements, custom goals, or specific features..." : "Detail database integrations, specific screen requirements, etc."}
                           required
                           disabled={status.submitting}
+                          style={{ minHeight: '100px' }}
                         />
                       </div>
 

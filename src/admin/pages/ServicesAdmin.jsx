@@ -80,6 +80,39 @@ function ImageUploader({ label, value, onChange, hint, accept = "image/*", isDoc
   );
 }
 
+const loadPdfText = async (fileOrUrl) => {
+  if (!window.pdfjsLib) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+      script.onload = () => {
+        window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        resolve();
+      };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  let pdf;
+  if (typeof fileOrUrl === 'string') {
+    pdf = await window.pdfjsLib.getDocument(fileOrUrl).promise;
+  } else {
+    const arrayBuffer = await fileOrUrl.arrayBuffer();
+    pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  }
+
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    fullText += pageText + '\n';
+  }
+  return fullText;
+};
+
 export default function ServicesAdmin() {
   const { adminFetch } = useContext(AdminContext);
   const { cms, reloadCms } = useContext(CmsContext) || {};
@@ -87,6 +120,94 @@ export default function ServicesAdmin() {
   const [activeTab, setActiveTab] = useState('profile');
   const [saveLoading, setSaveLoading] = useState(false);
   const [feedback, setFeedback] = useState({ success: null, error: null });
+
+  // CV parsing states
+  const [parseLoading, setParseLoading] = useState(false);
+  const [parseSuccess, setParseSuccess] = useState(false);
+  const cvFileRef = useRef(null);
+
+  const handleCvUploadAndParse = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setParseLoading(true);
+    setParseSuccess(false);
+
+    try {
+      // 1. Upload CV file to server
+      const fd = new FormData();
+      fd.append('file', file);
+      const uploadRes = await fetch(`${API_BASE_URL}/upload.php`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        body: fd
+      });
+      const uploadData = await uploadRes.json();
+      
+      if (!uploadData.success) {
+        throw new Error(uploadData.message || 'CV upload failed');
+      }
+
+      // Sync CV link in bioInfo
+      updatePortfolioState(prev => ({
+        ...prev,
+        bioInfo: {
+          ...prev.bioInfo,
+          contact: {
+            ...prev.bioInfo?.contact,
+            resume: uploadData.url
+          }
+        }
+      }));
+
+      // 2. Extract text client-side using pdf.js
+      let textContent = '';
+      if (file.type === 'application/pdf') {
+        textContent = await loadPdfText(file);
+      } else {
+        textContent = `Resume file name: ${file.name}. Experience timeline parsing simulation.`;
+      }
+
+      // 3. Post text to backend to parse structured timeline
+      const parseRes = await fetch(`${API_BASE_URL}/ai_helper.php?task=parse_cv`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('adminToken')}` 
+        },
+        body: JSON.stringify({ text: textContent })
+      });
+      
+      const parseData = await parseRes.json();
+      if (parseData.success && Array.isArray(parseData.result)) {
+        // Populate the timeline
+        updatePortfolioState(prev => ({
+          ...prev,
+          experiences: parseData.result
+        }));
+        setParseSuccess(true);
+        showFeedback('success', 'CV parsed. Experiences loaded into timeline.');
+      } else {
+        throw new Error(parseData.message || 'AI parsing failed');
+      }
+
+    } catch (err) {
+      showFeedback('error', 'CV parsing failed: ' + err.message);
+    } finally {
+      setParseLoading(false);
+      if (cvFileRef.current) cvFileRef.current.value = ''; // Reset file input
+    }
+  };
+
+  const techOptions = [
+    'TypeScript', 'JavaScript', 'Go', 'Python', 'React / Next.js', 'Node.js', 'Kafka', 'PostgreSQL', 
+    'MongoDB', 'Docker / K8s', 'AWS', 'GCP', 'Azure', 'GraphQL', 'gRPC', 'Redis', 
+    'Terraform', 'Java', 'C#', 'PHP', 'Ruby', 'Rust', 'Swift', 'Kotlin', 'CI/CD', 'Other...'
+  ];
+
+  const yearOptions = [
+    '1y', '2y', '3y', '4y', '5y', '6y', '7y', '8y', '9y', '10y', '10y+', '12y+', '15y+'
+  ];
 
   // Default initial template data
   const defaultPortfolio = {
@@ -686,8 +807,72 @@ export default function ServicesAdmin() {
                     </button>
                   </div>
 
-                  <input type="text" className="form-control" placeholder="Technology Name (e.g. Go)" value={tech.name} onChange={e => handleTechChange(idx, 'name', e.target.value)} style={{ flex: 3 }} />
-                  <input type="text" className="form-control" placeholder="Years (e.g. 6y)" value={tech.years} onChange={e => handleTechChange(idx, 'years', e.target.value)} style={{ flex: 1 }} />
+                  {/* Select Tech Name Dropdown */}
+                  <div style={{ flex: 3, display: 'flex', gap: 8 }}>
+                    <select 
+                      className="form-control"
+                      value={techOptions.includes(tech.name) ? tech.name : (tech.name ? 'Other...' : '')}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === 'Other...') {
+                          handleTechChange(idx, 'name', '');
+                        } else {
+                          handleTechChange(idx, 'name', val);
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="" disabled>-- Select Tech --</option>
+                      {techOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+
+                    {/* Custom text field if "Other..." is selected or the technology is custom */}
+                    {(!techOptions.includes(tech.name) || tech.name === '') && (
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="Type custom tech..." 
+                        value={tech.name} 
+                        onChange={e => handleTechChange(idx, 'name', e.target.value)} 
+                        style={{ flex: 1 }} 
+                      />
+                    )}
+                  </div>
+
+                  {/* Select Years Dropdown */}
+                  <div style={{ flex: 1.5, display: 'flex', gap: 8 }}>
+                    <select 
+                      className="form-control"
+                      value={yearOptions.includes(tech.years) ? tech.years : (tech.years ? 'Other...' : '')}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === 'Other...') {
+                          handleTechChange(idx, 'years', '');
+                        } else {
+                          handleTechChange(idx, 'years', val);
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="" disabled>-- Years --</option>
+                      {yearOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+
+                    {(!yearOptions.includes(tech.years) || tech.years === '') && (
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="e.g. 11y" 
+                        value={tech.years} 
+                        onChange={e => handleTechChange(idx, 'years', e.target.value)} 
+                        style={{ flex: 1 }} 
+                      />
+                    )}
+                  </div>
                   
                   <button className="btn btn-outline" onClick={() => removeTech(idx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: 8 }}><Trash2 size={14} /></button>
                 </div>
@@ -810,6 +995,40 @@ export default function ServicesAdmin() {
         {/* Experience Timeline Tab */}
         {activeTab === 'exp' && (
           <div>
+            {/* AI CV Parser Block */}
+            <div style={{ border: '1px dashed var(--primary)', borderRadius: 8, padding: 18, marginBottom: 24, backgroundColor: 'rgba(99, 102, 241, 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Zap size={18} style={{ color: 'var(--primary)' }} />
+                <div>
+                  <strong style={{ fontSize: '.9rem' }}>AI CV/Resume Auto-Parser</strong>
+                  <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Upload your CV (PDF or Word document). The system will automatically extract your work experience timeline, companies, and achievements, and populate them below.
+                  </p>
+                </div>
+              </div>
+              
+              <input 
+                type="file" 
+                ref={cvFileRef} 
+                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                style={{ display: 'none' }}
+                onChange={handleCvUploadAndParse}
+              />
+              
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button 
+                  className="btn btn-outline" 
+                  onClick={() => cvFileRef.current?.click()}
+                  disabled={parseLoading}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: '.8rem' }}
+                >
+                  {parseLoading ? <span className="cms-spinner" /> : <Upload size={14} />}
+                  {parseLoading ? 'Parsing Resume...' : 'Upload & Parse CV'}
+                </button>
+                {parseSuccess && <span style={{ color: 'var(--success)', fontSize: '.8rem', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={14} /> Timeline successfully populated!</span>}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h4 style={{ fontWeight: 700, margin: 0 }}>Work Experience Timeline</h4>
               <button className="btn btn-outline" onClick={addExperience} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.8rem' }}><Plus size={12} /> Add Experience Card</button>

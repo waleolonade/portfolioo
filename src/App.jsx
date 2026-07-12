@@ -200,6 +200,7 @@ function LandingPage() {
       <Navbar cms={cms} />
       <main style={{ flexGrow: 1 }}>
         {layout.map((section, idx) => {
+          if (section.id === 'services') return null; // Completely remove services section from homepage
           if (!isSectionVisible(section)) return null;
           
           // Built-in component

@@ -92,10 +92,9 @@ export default function Services({ cms = {} }) {
     <section id="services" className="section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border)' }}>
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-          <span style={{
+          <span className="text-sky-600 dark:text-sky-400" style={{
             fontSize: '0.8rem',
             fontWeight: 700,
-            color: 'var(--primary)',
             textTransform: 'uppercase',
             letterSpacing: '0.15em',
             display: 'block',
