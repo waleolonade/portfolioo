@@ -1,58 +1,32 @@
-import { useContext, useState, useRef } from 'react';
+import { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AdminContext } from '../AdminContext';
+import { CmsContext } from '../../CmsContext';
 import { API_BASE_URL } from '../../config';
 import { 
+  Save, 
   Plus, 
-  Edit, 
   Trash2, 
-  X,
-  FileText,
+  Globe, 
+  Briefcase, 
+  Award, 
+  Sliders, 
   Code,
-  Laptop,
-  Smartphone,
-  Server,
-  Database,
-  Shield,
-  Globe,
-  Cloud,
-  Palette,
-  Cpu,
+  FileCode,
+  AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  Undo,
+  Redo,
+  Mail,
+  Link,
   Zap,
-  Settings,
+  Info,
   CheckCircle,
-  TrendingUp,
-  DollarSign,
-  Wand2,
-  List,
-  Upload
+  Upload,
+  X
 } from 'lucide-react';
 
-const ICON_MAP = {
-  Code,
-  Laptop,
-  Smartphone,
-  Server,
-  Database,
-  Shield,
-  Globe,
-  Cloud,
-  Palette,
-  Cpu,
-  Zap,
-  Settings
-};
-
-const AVAILABLE_ICONS = Object.keys(ICON_MAP);
-
-const ServiceIcon = ({ name, size = 20, className = "", style = {} }) => {
-  const IconComponent = ICON_MAP[name] || Code;
-  return <IconComponent size={size} className={className} style={style} />;
-};
-
-/* ═══════════════════════════════════════════════
-   Shared: Image Uploader with Drag & Drop
-   ═══════════════════════════════════════════════ */
-function ImageUploader({ label, value, onChange, hint }) {
+function ImageUploader({ label, value, onChange, hint, accept = "image/*", isDoc = false }) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
@@ -69,24 +43,34 @@ function ImageUploader({ label, value, onChange, hint }) {
       if (d.success) { onChange(d.url); } else setError(d.message || 'Upload failed');
     } catch { setError('Network error'); } finally { setUploading(false); }
   };
+
+  const isPdf = value && value.toLowerCase().endsWith('.pdf');
+  const isWord = value && value.toLowerCase().match(/\.(docx|doc)$/);
+
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <label className="form-label">{label}</label>}
       <div onDrop={e => { e.preventDefault(); setDragActive(false); upload(e.dataTransfer?.files?.[0]); }}
         onDragOver={e => { e.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)}
         onClick={() => fileRef.current?.click()}
-        style={{ border: `2px dashed ${dragActive ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)',
-          padding: value ? 10 : '24px 16px', textAlign: 'center', cursor: 'pointer',
+        style={{ border: `2px dashed ${dragActive ? 'var(--primary)' : 'var(--border)'}`, borderRadius: '8px',
+          padding: value ? 12 : '24px 16px', textAlign: 'center', cursor: 'pointer',
           background: dragActive ? 'rgba(59,130,246,.06)' : 'var(--bg-secondary)', transition: 'all .2s' }}>
-        <input ref={fileRef} type="file" accept="image/*" onChange={e => upload(e.target.files?.[0])} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept={accept} onChange={e => upload(e.target.files?.[0])} style={{ display: 'none' }} />
         {uploading ? <span className="cms-spinner" /> : value ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src={value} alt="" style={{ width: 60, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }} />
+            {isPdf || isWord ? (
+              <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--primary)' }}>
+                <FileCode size={24} />
+              </div>
+            ) : (
+              <img src={value} alt="" style={{ width: 60, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }} />
+            )}
             <span style={{ flex: 1, textAlign: 'left', fontSize: '.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>{value.split('/').pop()}</span>
             <button type="button" onClick={e => { e.stopPropagation(); onChange(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>
           </div>
         ) : (
-          <><Upload size={22} style={{ color: 'var(--text-muted)', marginBottom: 4 }} /><p style={{ fontSize: '.82rem', color: 'var(--text-secondary)', margin: '0 0 2px' }}><strong>Click to upload</strong> or drag & drop</p><p style={{ fontSize: '.68rem', color: 'var(--text-muted)', margin: 0 }}>PNG, JPG, SVG, WebP · Max 5 MB</p></>
+          <><Upload size={22} style={{ color: 'var(--text-muted)', marginBottom: 4 }} /><p style={{ fontSize: '.82rem', color: 'var(--text-secondary)', margin: '0 0 2px' }}><strong>Click to upload</strong> or drag & drop</p><p style={{ fontSize: '.68rem', color: 'var(--text-muted)', margin: 0 }}>{isDoc ? 'PDF, DOC, DOCX · Max 5 MB' : 'PNG, JPG, SVG, WebP · Max 5 MB'}</p></>
         )}
       </div>
       {error && <p style={{ color: '#ef4444', fontSize: '.78rem', marginTop: 4 }}>{error}</p>}
@@ -97,721 +81,825 @@ function ImageUploader({ label, value, onChange, hint }) {
 }
 
 export default function ServicesAdmin() {
-  const { 
-    services, serviceModal, setServiceModal, serviceForm, setServiceForm, 
-    handleSaveService, handleDeleteService, adminFetch 
-  } = useContext(AdminContext);
+  const { adminFetch } = useContext(AdminContext);
+  const { cms, reloadCms } = useContext(CmsContext) || {};
+  
+  const [activeTab, setActiveTab] = useState('profile');
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ success: null, error: null });
 
-  const [activeFormTab, setActiveFormTab] = useState('basic');
-  const [aiGenerating, setAiGenerating] = useState(false);
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setServiceForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const selectIcon = (iconName) => {
-    setServiceForm(prev => ({ ...prev, icon_name: iconName }));
-  };
-
-  const openModal = (mode, data = null) => {
-    setActiveFormTab('basic');
-    if (mode === 'edit' && data) {
-      setServiceForm({
-        id: data.id || '',
-        name: data.name || '',
-        description: data.description || '',
-        benefits: data.benefits || '',
-        features: data.features || '',
-        icon_name: data.icon_name || 'Code',
-        image_url: data.image_url || '',
-        basic_price: data.basic_price || 0,
-        standard_price: data.standard_price || 0,
-        premium_price: data.premium_price || 0
-      });
-      setServiceModal({ open: true, mode: 'edit', data });
-    } else {
-      setServiceForm({
-        id: '',
-        name: '',
-        description: '',
-        benefits: '',
-        features: '',
-        icon_name: 'Code',
-        image_url: '',
-        basic_price: 0,
-        standard_price: 0,
-        premium_price: 0
-      });
-      setServiceModal({ open: true, mode: 'create', data: null });
-    }
-  };
-
-  // AI Service Content Assistant
-  const handleAiGenerate = async () => {
-    if (!serviceForm.name) {
-      alert('Please fill out the Service Name first.');
-      return;
-    }
-    setAiGenerating(true);
-    try {
-      const res = await adminFetch(`${API_BASE_URL}/ai_helper.php?task=description`, {
-        method: 'POST',
-        body: JSON.stringify({
-          title: serviceForm.name,
-          category: serviceForm.icon_name === 'Smartphone' ? 'Mobile App Development' : 'Website Development'
-        })
-      });
-      if (res.ok && res.data.success) {
-        const result = res.data.result;
-        const cleanedDesc = result.replace(/^Brainfeels AI: Project Description Generator\n\n/, '');
-        
-        const lowerName = serviceForm.name.toLowerCase();
-        let features = '';
-        let benefits = '';
-        
-        if (lowerName.includes('web') || lowerName.includes('site') || lowerName.includes('front')) {
-          features = 'Custom React frontend development, Responsive CSS layouts, Speed & Lighthouse SEO optimization, CMS content integration';
-          benefits = 'Establish brand authority, Reach customers on all devices, Lower server hosting overhead, Easily update headings & text';
-        } else if (lowerName.includes('app') || lowerName.includes('mobile') || lowerName.includes('ios')) {
-          features = 'React Native & Expo architecture, SQLite offline database caching, Secure device GPS tracking, Batch push notification alerts';
-          benefits = 'Native user experience on iOS & Android, Keep field operators sync\'d, Boost app engagement, Scalable offline performance';
-        } else if (lowerName.includes('api') || lowerName.includes('back') || lowerName.includes('integrat')) {
-          features = 'High-throughput RESTful endpoints, Redis performance cache layers, Secure JWT authorization keys, CORS & security headers';
-          benefits = 'Guarantee transaction integrity, Handle up to 5000 requests/sec, Protect user authentication, Modular microservices layout';
-        } else if (lowerName.includes('security') || lowerName.includes('network') || lowerName.includes('support')) {
-          features = 'Zero-trust VPC networks, Tailored firewall policies, Automated health check logs, VPN tunnel setup';
-          benefits = 'Ensure full data isolation, Minimize downtime to 99.99%, Immediate anomaly notifications, Safe remote access';
-        } else {
-          features = 'Modern modular codebase components, Custom admin panel configuration, Agile development sprint cycles, Comprehensive testing suite';
-          benefits = 'Accelerate development delivery, Adapt to evolving workloads, Secure intellectual property, Save admin overhead hours';
-        }
-        
-        setServiceForm(prev => ({
-          ...prev,
-          description: prev.description || cleanedDesc,
-          features: prev.features || features,
-          benefits: prev.benefits || benefits
-        }));
-      } else {
-        alert('AI Generation failed: ' + (res.data?.message || 'Unknown error'));
+  // Default initial template data
+  const defaultPortfolio = {
+    bioInfo: {
+      name: 'James',
+      lastName: 'Whitfield',
+      badge: '✦ Staff Software Engineer',
+      role: '10+ years · Distributed Systems · API Design · Tech Leadership',
+      bio: 'I architect and build high‑scale systems that handle millions of requests per day. Passionate about clean abstractions, team mentorship, and turning business requirements into reliable, maintainable software.',
+      stats: [
+        { number: '10+', label: 'Years Exp.' },
+        { number: '8', label: 'Products' },
+        { number: '12', label: 'Team Lead' },
+        { number: '3', label: 'Patents' }
+      ],
+      socials: { github: '#', linkedin: '#', twitter: '#', dev: '#' },
+      contact: { email: 'james@example.com', linkedin: '#', resume: '#' }
+    },
+    techStack: [
+      { name: 'TypeScript', years: '8y' },
+      { name: 'Go', years: '6y' },
+      { name: 'Python', years: '10y' },
+      { name: 'React / Next.js', years: '7y' },
+      { name: 'Node.js', years: '9y' },
+      { name: 'Kafka', years: '5y' },
+      { name: 'PostgreSQL', years: '10y' },
+      { name: 'MongoDB', years: '6y' },
+      { name: 'Docker / K8s', years: '6y' },
+      { name: 'AWS', years: '8y' },
+      { name: 'GraphQL', years: '5y' },
+      { name: 'gRPC', years: '4y' },
+      { name: 'Redis', years: '7y' },
+      { name: 'Terraform', years: '4y' }
+    ],
+    projects: [
+      {
+        id: 1,
+        title: 'Fraud Detection Pipeline',
+        year: '2024 · Prod',
+        metrics: [
+          { icon: 'fa-bolt', value: '120ms', label: 'p99' },
+          { icon: 'fa-check-circle', value: '99.97%', label: 'uptime' },
+          { icon: 'fa-dollar-sign', value: '$2.4M', label: 'prevented' }
+        ],
+        description: 'Real‑time fraud scoring service processing 50k+ events/sec with rules engine + ML.',
+        tech: ['Go', 'Kafka', 'Redis', 'Flink', 'TF Serving', 'K8s'],
+        links: [
+          { label: 'Demo', icon: 'fa-external-link-alt', url: '#' },
+          { label: 'Source', icon: 'fa-github', url: '#' },
+          { label: 'Case Study', icon: 'fa-file-alt', url: '#' }
+        ]
+      },
+      {
+        id: 2,
+        title: 'API Gateway · Mesh',
+        year: '2023 · OSS',
+        metrics: [
+          { icon: 'fa-code-branch', value: '2.8k', label: 'stars' },
+          { icon: 'fa-users', value: '400+', label: 'deployments' },
+          { icon: 'fa-clock', value: '85%', label: 'faster routing' }
+        ],
+        description: 'Pluggable gateway supporting REST, GraphQL, gRPC with rate limiting & circuit breakers.',
+        tech: ['Go', 'gRPC', 'Envoy', 'OTel', 'Redis', 'JWT'],
+        links: [
+          { label: 'Demo', icon: 'fa-external-link-alt', url: '#' },
+          { label: 'GitHub', icon: 'fa-github', url: '#' },
+          { label: 'Docs', icon: 'fa-book', url: '#' }
+        ]
       }
-    } catch (e) {
-      alert('AI Generation error: ' + e.message);
-    } finally {
-      setAiGenerating(false);
+    ],
+    experiences: [
+      {
+        period: '2021 — Present',
+        title: 'Staff Software Engineer',
+        company: 'FinSecure Inc.',
+        highlights: [
+          'Led architecture of fraud detection platform serving 50k+ TPS.',
+          'Mentored 8 engineers across 3 teams; introduced RFC process.',
+          'Reduced cloud costs by 32% through right‑sizing.'
+        ]
+      },
+      {
+        period: '2017 — 2021',
+        title: 'Senior Software Engineer',
+        company: 'HealthData Labs',
+        highlights: [
+          'Architected HIPAA‑compliant platform serving 1.2M+ records.',
+          'Built event‑driven ETL pipeline reducing sync latency 24h → 5min.',
+          'Led monolith → microservices migration (12 services, Kafka).'
+        ]
+      }
+    ]
+  };
+
+  // State holding all forms loaded from CMS or default
+  const [portfolioData, setPortfolioData] = useState(defaultPortfolio);
+  const [jsonText, setJsonText] = useState(JSON.stringify(defaultPortfolio, null, 2));
+
+  // Undo / Redo Stacks
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+
+  // Load from CMS settings on mount or cms update
+  useEffect(() => {
+    if (cms && cms.james_whitfield_portfolio_data) {
+      try {
+        const parsed = JSON.parse(cms.james_whitfield_portfolio_data);
+        setPortfolioData(parsed);
+        setJsonText(JSON.stringify(parsed, null, 2));
+        setUndoStack([]);
+        setRedoStack([]);
+      } catch (e) {
+        console.error('Failed parsing loaded CMS data', e);
+      }
+    }
+  }, [cms]);
+
+  const showFeedback = (type, msg) => {
+    setFeedback({ success: type === 'success' ? msg : null, error: type === 'error' ? msg : null });
+    setTimeout(() => setFeedback({ success: null, error: null }), 4500);
+  };
+
+  // Push to Undo stack before updating state
+  const pushStateToHistory = useCallback((newState) => {
+    setUndoStack(prev => [...prev, JSON.stringify(portfolioData)]);
+    setRedoStack([]); // Clear redo stack on new action
+  }, [portfolioData]);
+
+  // Undo Action
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const previous = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, JSON.stringify(portfolioData)]);
+    
+    const parsed = JSON.parse(previous);
+    setPortfolioData(parsed);
+    setJsonText(JSON.stringify(parsed, null, 2));
+    showFeedback('success', 'Undo successful');
+  };
+
+  // Redo Action
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    setUndoStack(prev => [...prev, JSON.stringify(portfolioData)]);
+    
+    const parsed = JSON.parse(next);
+    setPortfolioData(parsed);
+    setJsonText(JSON.stringify(parsed, null, 2));
+    showFeedback('success', 'Redo successful');
+  };
+
+  // Listen to keyboard undo/redo shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, redoStack, portfolioData]);
+
+  // Helper to commit updates and push history
+  const updatePortfolioState = (updater) => {
+    pushStateToHistory(portfolioData);
+    setPortfolioData(prev => {
+      const updated = updater(prev);
+      setJsonText(JSON.stringify(updated, null, 2));
+      return updated;
+    });
+  };
+
+  // Re-order Lists Helper
+  const moveItemInArray = (listName, index, direction) => {
+    if (direction === 'up' && index === 0) return;
+    updatePortfolioState(prev => {
+      const list = [...prev[listName]];
+      if (direction === 'up' && index > 0) {
+        [list[index - 1], list[index]] = [list[index], list[index - 1]];
+      } else if (direction === 'down' && index < list.length - 1) {
+        [list[index + 1], list[index]] = [list[index], list[index + 1]];
+      }
+      return { ...prev, [listName]: list };
+    });
+  };
+
+  // Profile Field Handlers
+  const handleBioChange = (field, value) => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      bioInfo: {
+        ...prev.bioInfo,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleNestedBioChange = (parentField, field, value) => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      bioInfo: {
+        ...prev.bioInfo,
+        [parentField]: {
+          ...prev.bioInfo[parentField],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  // Tech Stack Handlers
+  const handleTechChange = (index, field, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.techStack];
+      list[index] = { ...list[index], [field]: value };
+      return { ...prev, techStack: list };
+    });
+  };
+
+  const addTech = () => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      techStack: [...prev.techStack, { name: '', years: '' }]
+    }));
+  };
+
+  const removeTech = (index) => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      techStack: prev.techStack.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Projects Handlers
+  const handleProjectChange = (index, field, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      list[index] = { ...list[index], [field]: value };
+      return { ...prev, projects: list };
+    });
+  };
+
+  const addProject = () => {
+    updatePortfolioState(prev => {
+      const newProj = {
+        id: Date.now(),
+        title: 'New Project API',
+        year: `${new Date().getFullYear()} · Dev`,
+        metrics: [
+          { icon: 'fa-bolt', value: '100ms', label: 'latency' },
+          { icon: 'fa-check-circle', value: '99.9%', label: 'uptime' }
+        ],
+        description: 'Provide a brief summary of the flagship project.',
+        tech: ['TypeScript', 'Node.js'],
+        links: [{ label: 'Demo', icon: 'fa-external-link-alt', url: '#' }]
+      };
+      return { ...prev, projects: [...prev.projects, newProj] };
+    });
+  };
+
+  const removeProject = (index) => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Project Nested Array Editors
+  const addProjectMetric = (projIndex) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      list[projIndex].metrics = [...(list[projIndex].metrics || []), { icon: 'fa-bolt', value: '', label: '' }];
+      return { ...prev, projects: list };
+    });
+  };
+
+  const removeProjectMetric = (projIndex, metricIndex) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      list[projIndex].metrics = list[projIndex].metrics.filter((_, mI) => mI !== metricIndex);
+      return { ...prev, projects: list };
+    });
+  };
+
+  const handleProjectMetricChange = (projIndex, metricIndex, field, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      const metrics = [...list[projIndex].metrics];
+      metrics[metricIndex] = { ...metrics[metricIndex], [field]: value };
+      list[projIndex].metrics = metrics;
+      return { ...prev, projects: list };
+    });
+  };
+
+  const addProjectLink = (projIndex) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      list[projIndex].links = [...(list[projIndex].links || []), { label: '', icon: 'fa-external-link-alt', url: '' }];
+      return { ...prev, projects: list };
+    });
+  };
+
+  const removeProjectLink = (projIndex, linkIndex) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      list[projIndex].links = list[projIndex].links.filter((_, lI) => lI !== linkIndex);
+      return { ...prev, projects: list };
+    });
+  };
+
+  const handleProjectLinkChange = (projIndex, linkIndex, field, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.projects];
+      const links = [...list[projIndex].links];
+      links[linkIndex] = { ...links[linkIndex], [field]: value };
+      list[projIndex].links = links;
+      return { ...prev, projects: list };
+    });
+  };
+
+  // Experiences Handlers
+  const handleExpChange = (index, field, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.experiences];
+      list[index] = { ...list[index], [field]: value };
+      return { ...prev, experiences: list };
+    });
+  };
+
+  const addExperience = () => {
+    updatePortfolioState(prev => {
+      const newExp = {
+        period: '2026',
+        title: 'Lead Software Engineer',
+        company: 'Innovate LLC',
+        highlights: ['Delivered highly concurrent systems.']
+      };
+      return { ...prev, experiences: [...prev.experiences, newExp] };
+    });
+  };
+
+  const removeExperience = (index) => {
+    updatePortfolioState(prev => ({
+      ...prev,
+      experiences: prev.experiences.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Experience Bullet Highlights List
+  const addExpHighlight = (expIndex) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.experiences];
+      list[expIndex].highlights = [...(list[expIndex].highlights || []), ''];
+      return { ...prev, experiences: list };
+    });
+  };
+
+  const removeExpHighlight = (expIndex, highlightIdx) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.experiences];
+      list[expIndex].highlights = list[expIndex].highlights.filter((_, hI) => hI !== highlightIdx);
+      return { ...prev, experiences: list };
+    });
+  };
+
+  const handleExpHighlightChange = (expIndex, highlightIdx, value) => {
+    updatePortfolioState(prev => {
+      const list = [...prev.experiences];
+      const highlights = [...list[expIndex].highlights];
+      highlights[highlightIdx] = value;
+      list[expIndex].highlights = highlights;
+      return { ...prev, experiences: list };
+    });
+  };
+
+  // Raw JSON direct editing
+  const handleJsonChange = (e) => {
+    const txt = e.target.value;
+    setJsonText(txt);
+    try {
+      const parsed = JSON.parse(txt);
+      setPortfolioData(parsed);
+    } catch {
+      // Don't commit invalid JSON syntax directly to inputs
     }
   };
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    if (!serviceForm.name) {
-      setActiveFormTab('basic');
-      alert('Service Name is required.');
+  // Save/Publish
+  const savePortfolioSettings = async () => {
+    try {
+      JSON.parse(jsonText); // Ensure JSON is valid
+    } catch (e) {
+      showFeedback('error', 'Cannot save: JSON syntax error: ' + e.message);
       return;
     }
-    if (!serviceForm.description) {
-      setActiveFormTab('basic');
-      alert('Service Description is required.');
-      return;
+
+    setSaveLoading(true);
+    try {
+      const payload = {
+        james_whitfield_portfolio_data: JSON.stringify(portfolioData)
+      };
+      const res = await adminFetch(`${API_BASE_URL}/cms.php`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showFeedback('success', 'James Whitfield portfolio settings saved successfully.');
+        setUndoStack([]);
+        setRedoStack([]);
+        if (typeof reloadCms === 'function') reloadCms();
+      } else {
+        throw new Error(res.data?.message || 'Save failed.');
+      }
+    } catch (err) {
+      showFeedback('error', err.message);
+    } finally {
+      setSaveLoading(false);
     }
-    if (!serviceForm.features) {
-      setActiveFormTab('details');
-      alert('Features list is required.');
-      return;
-    }
-    if (!serviceForm.benefits) {
-      setActiveFormTab('details');
-      alert('Benefits list is required.');
-      return;
-    }
-    handleSaveService(e);
   };
 
   return (
-    <div className="services-admin-container">
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Services Directory</h3>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>Services Page Customizer</h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Configure the software engineering, consulting, and agency services displayed to clients.
+            Configure and re-arrange the flagship projects, competencies, and timeline structure of James Whitfield on the services page.
           </p>
         </div>
-        <button onClick={() => openModal('create')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Plus size={18} /> Add New Service
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
-        {services.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)' }}>
-            <FileText size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-            <h4 style={{ fontWeight: 700, marginBottom: '6px' }}>No Services Configured</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Add your first software agency service capability.
-            </p>
-            <button onClick={() => openModal('create')} className="btn btn-outline" style={{ fontSize: '0.85rem' }}>
-              Configure a Service
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Undo/Redo Buttons */}
+          <div style={{ display: 'flex', gap: '6px', borderRight: '1px solid var(--border)', paddingRight: '12px', marginRight: '6px' }}>
+            <button 
+              onClick={handleUndo} 
+              className="btn btn-outline" 
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              disabled={undoStack.length === 0}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo size={14} />
+            </button>
+            <button 
+              onClick={handleRedo} 
+              className="btn btn-outline" 
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              disabled={redoStack.length === 0}
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo size={14} />
             </button>
           </div>
-        ) : (
-          services.map(service => (
-            <div key={service.id} className="admin-service-card">
-              <div className="card-header-bar">
-                <div className="service-icon-wrapper">
-                  <ServiceIcon name={service.icon_name} size={22} />
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className="price-tag-badge">${parseFloat(service.basic_price).toLocaleString()}</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Starting</span>
-                </div>
-              </div>
-              
-              <div className="card-body">
-                <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  {service.name}
-                </h4>
-                
-                <p className="description-text">{service.description}</p>
-                
-                {service.features && (
-                  <div className="lists-section">
-                    <strong className="section-label"><List size={11} /> Features</strong>
-                    <ul className="bullet-list">
-                      {service.features.split(',').slice(0, 3).map((f, idx) => (
-                        <li key={idx}>✓ {f.trim()}</li>
-                      ))}
-                      {service.features.split(',').length > 3 && (
-                        <li style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>+ {service.features.split(',').length - 3} more</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
 
-                <div className="card-actions">
-                  <div className="buttons">
-                    <button onClick={() => openModal('edit', service)} className="btn btn-outline edit-btn">
-                      <Edit size={13} /> Edit
-                    </button>
-                    <button onClick={() => handleDeleteService(service.id)} className="btn btn-outline delete-btn">
-                      <Trash2 size={13} /> Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+          <button 
+            onClick={savePortfolioSettings} 
+            className="btn btn-primary" 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+            disabled={saveLoading}
+          >
+            {saveLoading ? <span className="cms-spinner" /> : <Save size={16} />}
+            {saveLoading ? 'Saving...' : 'Save & Publish'}
+          </button>
+        </div>
       </div>
 
-      {/* Upgraded Multi-field Form Modal */}
-      {serviceModal.open && (
-        <div className="admin-modal-overlay">
-          <div className="admin-modal-card">
-             <div className="modal-header">
-               <h3 style={{ fontWeight: 800 }}>{serviceModal.mode === 'edit' ? 'Edit Service' : 'Create Service'}</h3>
-               <button onClick={() => setServiceModal({open: false})} className="close-btn">
-                 <X size={20} />
-               </button>
-             </div>
-             
-             {/* Tab Navigation */}
-             <div className="modal-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', padding: '0 24px' }}>
-               <button 
-                 type="button" 
-                 onClick={() => setActiveFormTab('basic')}
-                 style={{
-                   padding: '14px 20px',
-                   background: 'none',
-                   border: 'none',
-                   borderBottom: `2px solid ${activeFormTab === 'basic' ? 'var(--primary)' : 'transparent'}`,
-                   color: activeFormTab === 'basic' ? 'var(--primary)' : 'var(--text-secondary)',
-                   fontWeight: activeFormTab === 'basic' ? '700' : '500',
-                   cursor: 'pointer',
-                   fontSize: '0.85rem'
-                 }}
-               >
-                 Basic Info
-               </button>
-               <button 
-                 type="button" 
-                 onClick={() => setActiveFormTab('details')}
-                 style={{
-                   padding: '14px 20px',
-                   background: 'none',
-                   border: 'none',
-                   borderBottom: `2px solid ${activeFormTab === 'details' ? 'var(--primary)' : 'transparent'}`,
-                   color: activeFormTab === 'details' ? 'var(--primary)' : 'var(--text-secondary)',
-                   fontWeight: activeFormTab === 'details' ? '700' : '500',
-                   cursor: 'pointer',
-                   fontSize: '0.85rem'
-                 }}
-               >
-                 Features & Benefits
-               </button>
-               <button 
-                 type="button" 
-                 onClick={() => setActiveFormTab('pricing')}
-                 style={{
-                   padding: '14px 20px',
-                   background: 'none',
-                   border: 'none',
-                   borderBottom: `2px solid ${activeFormTab === 'pricing' ? 'var(--primary)' : 'transparent'}`,
-                   color: activeFormTab === 'pricing' ? 'var(--primary)' : 'var(--text-secondary)',
-                   fontWeight: activeFormTab === 'pricing' ? '700' : '500',
-                   cursor: 'pointer',
-                   fontSize: '0.85rem'
-                 }}
-               >
-                 Pricing Tiers
-               </button>
-             </div>
-             
-             <form onSubmit={onSubmit} className="modal-form" style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-               
-               {/* TAB 1: Basic Info */}
-               {activeFormTab === 'basic' && (
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="fade-slide">
-                   <div className="form-group">
-                     <label>Service Name *</label>
-                     <input 
-                       type="text" 
-                       name="name" 
-                       value={serviceForm.name} 
-                       onChange={handleFormChange} 
-                       className="form-control" 
-                       placeholder="e.g. Enterprise Web Applications"
-                       required 
-                     />
-                   </div>
+      {feedback.success && <div className="alert alert-success" style={{ marginBottom: 20 }}>{feedback.success}</div>}
+      {feedback.error && <div className="alert alert-danger" style={{ marginBottom: 20 }}>{feedback.error}</div>}
 
-                   <div className="form-group">
-                     <label style={{ marginBottom: '8px' }}>Select Service Icon *</label>
-                     <div className="icon-selector-grid">
-                       {AVAILABLE_ICONS.map(ico => (
-                         <button
-                           key={ico}
-                           type="button"
-                           onClick={() => selectIcon(ico)}
-                           className={`icon-selector-btn ${serviceForm.icon_name === ico ? 'selected' : ''}`}
-                           title={ico}
-                         >
-                           <ServiceIcon name={ico} size={18} />
-                           <span style={{ fontSize: '0.65rem', marginTop: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '100%' }}>{ico}</span>
-                         </button>
-                       ))}
-                     </div>
-                   </div>
+      {/* Tabs */}
+      <div className="customizer-tabs" style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border)', marginBottom: 24, paddingBottom: 10 }}>
+        <button className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')} style={{ padding: '8px 16px', background: activeTab === 'profile' ? 'var(--primary)' : 'none', color: activeTab === 'profile' ? '#fff' : 'inherit', border: 'none', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={14} /> Profile & Hero</button>
+        <button className={`tab-btn ${activeTab === 'tech' ? 'active' : ''}`} onClick={() => setActiveTab('tech')} style={{ padding: '8px 16px', background: activeTab === 'tech' ? 'var(--primary)' : 'none', color: activeTab === 'tech' ? '#fff' : 'inherit', border: 'none', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Code size={14} /> Core Competencies</button>
+        <button className={`tab-btn ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')} style={{ padding: '8px 16px', background: activeTab === 'projects' ? 'var(--primary)' : 'none', color: activeTab === 'projects' ? '#fff' : 'inherit', border: 'none', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Award size={14} /> Flagship Projects</button>
+        <button className={`tab-btn ${activeTab === 'exp' ? 'active' : ''}`} onClick={() => setActiveTab('exp')} style={{ padding: '8px 16px', background: activeTab === 'exp' ? 'var(--primary)' : 'none', color: activeTab === 'exp' ? '#fff' : 'inherit', border: 'none', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Briefcase size={14} /> Experience Timeline</button>
+        <button className={`tab-btn ${activeTab === 'json' ? 'active' : ''}`} onClick={() => setActiveTab('json')} style={{ padding: '8px 16px', background: activeTab === 'json' ? 'var(--primary)' : 'none', color: activeTab === 'json' ? '#fff' : 'inherit', border: 'none', cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}><FileCode size={14} /> Developer JSON</button>
+      </div>
 
-                   <ImageUploader 
-                     label="Service Cover Image (Optional)" 
-                     value={serviceForm.image_url} 
-                     onChange={(url) => setServiceForm(prev => ({ ...prev, image_url: url }))} 
-                     hint="Upload an image to display on the service card."
-                   />
+      {/* Editor Content */}
+      <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 24 }}>
+        
+        {/* Profile/Hero Tab */}
+        {activeTab === 'profile' && (
+          <div>
+            <h4 style={{ fontWeight: 700, marginBottom: 16 }}>Profile Hero & Stats</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">First Name</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.name || ''} onChange={e => handleBioChange('name', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Last Name</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.lastName || ''} onChange={e => handleBioChange('lastName', e.target.value)} />
+              </div>
+            </div>
+            
+            <div className="form-group" style={{ marginTop: 14 }}>
+              <label className="form-label">Title Badge Text</label>
+              <input type="text" className="form-control" value={portfolioData.bioInfo?.badge || ''} onChange={e => handleBioChange('badge', e.target.value)} />
+            </div>
 
-                   <div className="form-group">
-                     <label>Service Description *</label>
-                     <textarea 
-                       name="description" 
-                       value={serviceForm.description} 
-                       onChange={handleFormChange} 
-                       className="form-control" 
-                       rows="4"
-                       placeholder="Describe the service scope, technologies, and target clients..."
-                       required 
-                     />
-                   </div>
-                 </div>
-               )}
+            <div className="form-group" style={{ marginTop: 14 }}>
+              <label className="form-label">Sub-title / Role Tagline</label>
+              <input type="text" className="form-control" value={portfolioData.bioInfo?.role || ''} onChange={e => handleBioChange('role', e.target.value)} />
+            </div>
 
-               {/* TAB 2: Features & Benefits */}
-               {activeFormTab === 'details' && (
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="fade-slide">
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Lists Narrative</h4>
-                     <button 
-                       type="button" 
-                       onClick={handleAiGenerate}
-                       disabled={aiGenerating || !serviceForm.name}
-                       className="btn btn-outline"
-                       style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.78rem' }}
-                     >
-                       {aiGenerating ? (
-                         <span className="cms-spinner" />
-                       ) : (
-                         <><Wand2 size={13} /> Auto-Generate with AI</>
-                       )}
-                     </button>
-                   </div>
+            <div className="form-group" style={{ marginTop: 14 }}>
+              <label className="form-label">Biography Summary</label>
+              <textarea className="form-control" rows={4} value={portfolioData.bioInfo?.bio || ''} onChange={e => handleBioChange('bio', e.target.value)} />
+            </div>
 
-                   <div className="form-group">
-                     <label>Key Features * (Comma separated)</label>
-                     <textarea 
-                       name="features" 
-                       value={serviceForm.features} 
-                       onChange={handleFormChange} 
-                       className="form-control" 
-                       rows="3"
-                       placeholder="e.g. Custom React frontend, High-throughput API nodes, Secure DB storage"
-                       required 
-                     />
-                     <small style={{ color: 'var(--text-muted)' }}>Specify the technical components delivered with this package.</small>
-                   </div>
+            <div className="form-group" style={{ marginTop: 14 }}>
+              <ImageUploader 
+                label="Passport Photo / Profile Picture"
+                value={portfolioData.bioInfo?.avatarUrl || ''}
+                onChange={val => handleBioChange('avatarUrl', val)}
+                hint="Upload a professional square portrait. Will render in the circular avatar slot."
+              />
+            </div>
 
-                   <div className="form-group">
-                     <label>Client Benefits * (Comma separated)</label>
-                     <textarea 
-                       name="benefits" 
-                       value={serviceForm.benefits} 
-                       onChange={handleFormChange} 
-                       className="form-control" 
-                       rows="3"
-                       placeholder="e.g. Scale customer reach, Secure proprietary algorithms, Establish business trust"
-                       required 
-                     />
-                     <small style={{ color: 'var(--text-muted)' }}>Specify the business value or outcome advantages client gains.</small>
-                   </div>
-                 </div>
-               )}
+            {/* Social Links Sub-section */}
+            <h5 style={{ fontWeight: 700, marginTop: 28, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><Link size={16} /> Social Handles</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">GitHub Link / Username</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.socials?.github || ''} onChange={e => handleNestedBioChange('socials', 'github', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">LinkedIn Link / Profile</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.socials?.linkedin || ''} onChange={e => handleNestedBioChange('socials', 'linkedin', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Twitter / X Handle</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.socials?.twitter || ''} onChange={e => handleNestedBioChange('socials', 'twitter', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Dev.to Profile Link</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.socials?.dev || ''} onChange={e => handleNestedBioChange('socials', 'dev', e.target.value)} />
+              </div>
+            </div>
 
-               {/* TAB 3: Pricing Models */}
-               {activeFormTab === 'pricing' && (
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} className="fade-slide">
-                   <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                     Set estimation price structures. If a tier doesn't apply, set it to 0.
-                   </p>
-                   <div className="form-row">
-                     <div className="form-group">
-                       <label>Starting Price (Basic) *</label>
-                       <div style={{ position: 'relative' }}>
-                         <DollarSign size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                         <input 
-                           type="number" 
-                           name="basic_price" 
-                           value={serviceForm.basic_price} 
-                           onChange={handleFormChange} 
-                           className="form-control" 
-                           style={{ paddingLeft: '30px' }}
-                           required
-                         />
-                       </div>
-                     </div>
-
-                     <div className="form-group">
-                       <label>Standard Price</label>
-                       <div style={{ position: 'relative' }}>
-                         <DollarSign size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                         <input 
-                           type="number" 
-                           name="standard_price" 
-                           value={serviceForm.standard_price} 
-                           onChange={handleFormChange} 
-                           className="form-control" 
-                           style={{ paddingLeft: '30px' }}
-                         />
-                       </div>
-                     </div>
-
-                     <div className="form-group">
-                       <label>Premium Price</label>
-                       <div style={{ position: 'relative' }}>
-                         <DollarSign size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                         <input 
-                           type="number" 
-                           name="premium_price" 
-                           value={serviceForm.premium_price} 
-                           onChange={handleFormChange} 
-                           className="form-control" 
-                           style={{ paddingLeft: '30px' }}
-                         />
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               )}
-
-               <div className="modal-footer" style={{ marginTop: '12px' }}>
-                 <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>
-                   {serviceModal.mode === 'edit' ? 'Update Service' : 'Publish Service'}
-                 </button>
-                 <button type="button" onClick={() => setServiceModal({open: false})} className="btn btn-outline" style={{ padding: '10px 20px' }}>
-                   Cancel
-                 </button>
-               </div>
-             </form>
+            {/* Contact details */}
+            <h5 style={{ fontWeight: 700, marginTop: 28, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={16} /> Contact Details & Call-to-actions</h5>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Contact Email Address</label>
+                <input type="text" className="form-control" value={portfolioData.bioInfo?.contact?.email || ''} onChange={e => handleNestedBioChange('contact', 'email', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <ImageUploader 
+                  label="Resume / Curriculum Vitae Document"
+                  value={portfolioData.bioInfo?.contact?.resume || ''}
+                  onChange={val => handleNestedBioChange('contact', 'resume', val)}
+                  hint="Upload your professional CV (PDF, DOC, or DOCX) for clients to download."
+                  accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  isDoc={true}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <style>{`
-        .admin-service-card {
-          background-color: var(--bg-primary);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .admin-service-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-        }
-        .card-header-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 20px 0;
-        }
-        .service-icon-wrapper {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
-          background: rgba(59, 130, 246, 0.08);
-          color: var(--primary);
-          border: 1px solid rgba(59, 130, 246, 0.15);
-        }
-        .price-tag-badge {
-          background: rgba(16, 185, 129, 0.08);
-          color: #059669;
-          font-weight: 700;
-          font-size: 0.95rem;
-          padding: 4px 10px;
-          border-radius: 20px;
-          border: 1px solid rgba(16, 185, 129, 0.15);
-          display: inline-block;
-        }
-        .admin-service-card .card-body {
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          flex-grow: 1;
-          text-align: left;
-        }
-        .description-text {
-          font-size: 0.88rem;
-          line-height: 1.5;
-          color: var(--text-secondary);
-          margin-bottom: 16px;
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .lists-section {
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px 14px;
-          margin-bottom: 16px;
-        }
-        .section-label {
-          font-size: 0.72rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: var(--text-muted);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          margin-bottom: 6px;
-        }
-        .bullet-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          font-size: 0.8rem;
-          color: var(--text-primary);
-        }
-        .card-actions {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          margin-top: auto;
-          border-top: 1px solid var(--border);
-          padding-top: 14px;
-        }
-        .card-actions .buttons {
-          display: flex;
-          gap: 6px;
-        }
-        .edit-btn, .delete-btn {
-          padding: 6px 12px !important;
-          font-size: 0.78rem !important;
-          display: inline-flex !important;
-          align-items: center !important;
-          gap: 4px !important;
-        }
-        .delete-btn {
-          color: #ef4444 !important;
-          border-color: rgba(239, 68, 68, 0.3) !important;
-        }
-        .delete-btn:hover {
-          background-color: rgba(239, 68, 68, 0.05) !important;
-          border-color: #ef4444 !important;
-        }
+        {/* Tech Stack Competencies Tab */}
+        {activeTab === 'tech' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h4 style={{ fontWeight: 700, margin: 0 }}>Core Competency Tags</h4>
+              <button className="btn btn-outline" onClick={addTech} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.8rem' }}><Plus size={12} /> Add Tech Badge</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {portfolioData.techStack?.map((tech, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 12, alignItems: 'center', backgroundColor: 'var(--bg-primary)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border)' }}>
+                  {/* Reorder Buttons */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <button 
+                      onClick={() => moveItemInArray('techStack', idx, 'up')} 
+                      style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                      disabled={idx === 0}
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <button 
+                      onClick={() => moveItemInArray('techStack', idx, 'down')} 
+                      style={{ background: 'none', border: 'none', cursor: idx === portfolioData.techStack.length - 1 ? 'not-allowed' : 'pointer', color: idx === portfolioData.techStack.length - 1 ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                      disabled={idx === portfolioData.techStack.length - 1}
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                  </div>
 
-        /* --- Modal Styles --- */
-        .admin-modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(15, 23, 42, 0.6);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 9999;
-          padding: 20px;
-        }
-        .admin-modal-card {
-          background-color: var(--bg-primary);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-lg);
-          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-          width: 100%;
-          max-width: 700px;
-          max-height: 90vh;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 24px;
-          border-bottom: 1px solid var(--border);
-        }
-        .modal-header h3 {
-          font-size: 1.3rem;
-          font-weight: 800;
-          color: var(--text-primary);
-          margin: 0;
-        }
-        .close-btn {
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-          padding: 4px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background-color 0.2s ease, color 0.2s ease;
-        }
-        .close-btn:hover {
-          background-color: var(--bg-secondary);
-          color: var(--text-primary);
-        }
-        .modal-form {
-          padding: 24px;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          text-align: left;
-        }
-        .form-row {
-          display: flex;
-          gap: 16px;
-        }
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          flex: 1;
-        }
-        .flex-2 { flex: 2; }
-        .flex-1 { flex: 1; }
-        .form-group label {
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-        .modal-footer {
-          display: flex;
-          justify-content: flex-end;
-          gap: 12px;
-          border-top: 1px solid var(--border);
-          padding: 20px 24px;
-        }
+                  <input type="text" className="form-control" placeholder="Technology Name (e.g. Go)" value={tech.name} onChange={e => handleTechChange(idx, 'name', e.target.value)} style={{ flex: 3 }} />
+                  <input type="text" className="form-control" placeholder="Years (e.g. 6y)" value={tech.years} onChange={e => handleTechChange(idx, 'years', e.target.value)} style={{ flex: 1 }} />
+                  
+                  <button className="btn btn-outline" onClick={() => removeTech(idx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: 8 }}><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        /* --- Icon Selector --- */
-        .icon-selector-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 8px;
-          max-height: 140px;
-          overflow-y: auto;
-          border: 1px solid var(--border);
-          padding: 10px;
-          border-radius: var(--radius-md);
-          background: var(--bg-secondary);
-        }
-        .icon-selector-btn {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 8px 4px;
-          background: var(--bg-primary);
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          cursor: pointer;
-          color: var(--text-secondary);
-          transition: all 0.2s ease;
-        }
-        .icon-selector-btn:hover {
-          border-color: var(--primary);
-          color: var(--primary);
-          background: rgba(59, 130, 246, 0.04);
-        }
-        .icon-selector-btn.selected {
-          background: var(--primary);
-          color: white;
-          border-color: var(--primary);
-        }
+        {/* Flagship Projects Tab */}
+        {activeTab === 'projects' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h4 style={{ fontWeight: 700, margin: 0 }}>Flagship Projects Editor</h4>
+              <button className="btn btn-outline" onClick={addProject} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.8rem' }}><Plus size={12} /> Add Project Card</button>
+            </div>
 
-        /* --- Animations & Utilities --- */
-        @keyframes cms-spin { to { transform: rotate(360deg); } }
-        .cms-spinner {
-          display: inline-block;
-          width: 16px;
-          height: 16px;
-          border: 2.5px solid var(--border);
-          border-top-color: var(--primary);
-          border-radius: 50%;
-          animation: cms-spin .7s linear infinite;
-        }
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-slide {
-          animation: fadeSlide .2s ease;
-        }
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {portfolioData.projects?.map((proj, idx) => (
+                <div key={proj.id || idx} style={{ border: '1px solid var(--border)', padding: 20, borderRadius: 8, backgroundColor: 'var(--bg-primary)' }}>
+                  
+                  {/* Project Title Bar */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {/* Reorder Buttons */}
+                      <button 
+                        onClick={() => moveItemInArray('projects', idx, 'up')} 
+                        className="btn btn-outline"
+                        style={{ padding: 4, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
+                        disabled={idx === 0}
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button 
+                        onClick={() => moveItemInArray('projects', idx, 'down')} 
+                        className="btn btn-outline"
+                        style={{ padding: 4, cursor: idx === portfolioData.projects.length - 1 ? 'not-allowed' : 'pointer' }}
+                        disabled={idx === portfolioData.projects.length - 1}
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>Project #{idx + 1}: {proj.title || 'New Project'}</span>
+                    </div>
 
-        @media (max-width: 640px) {
-          .form-row {
-            flex-direction: column;
-            gap: 16px;
-          }
-          .icon-selector-grid {
-            grid-template-columns: repeat(4, 1fr);
-          }
-        }
-      `}</style>
+                    <button className="btn btn-outline" onClick={() => removeProject(idx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 4 }}><Trash2 size={12} /> Delete Card</button>
+                  </div>
+                  
+                  {/* Basic Metadata */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Project Title</label>
+                      <input type="text" className="form-control" value={proj.title} onChange={e => handleProjectChange(idx, 'title', e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Year / Status Tag</label>
+                      <input type="text" className="form-control" value={proj.year} onChange={e => handleProjectChange(idx, 'year', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginTop: 12 }}>
+                    <label className="form-label">Description text</label>
+                    <textarea className="form-control" rows={3} value={proj.description} onChange={e => handleProjectChange(idx, 'description', e.target.value)} />
+                  </div>
+
+                  {/* Dynamic Metrics Section */}
+                  <div style={{ marginTop: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: '.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}><Zap size={13} /> Performance Metrics</span>
+                      <button className="btn btn-outline" onClick={() => addProjectMetric(idx)} style={{ fontSize: '.72rem', padding: '4px 8px' }}><Plus size={10} /> Add Metric</button>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {proj.metrics?.map((metric, mIdx) => (
+                        <div key={mIdx} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <input type="text" className="form-control" placeholder="Icon (e.g. fa-bolt)" value={metric.icon} onChange={e => handleProjectMetricChange(idx, mIdx, 'icon', e.target.value)} style={{ flex: 1, fontSize: '.8rem' }} />
+                          <input type="text" className="form-control" placeholder="Value (e.g. 120ms)" value={metric.value} onChange={e => handleProjectMetricChange(idx, mIdx, 'value', e.target.value)} style={{ flex: 1, fontSize: '.8rem' }} />
+                          <input type="text" className="form-control" placeholder="Label (e.g. p99)" value={metric.label} onChange={e => handleProjectMetricChange(idx, mIdx, 'label', e.target.value)} style={{ flex: 1, fontSize: '.8rem' }} />
+                          <button className="btn btn-outline" onClick={() => removeProjectMetric(idx, mIdx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: 6 }}><Trash2 size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tech stack tags */}
+                  <div className="form-group" style={{ marginTop: 16 }}>
+                    <label className="form-label">Technologies Used (comma separated)</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="Go, Kafka, Redis, K8s" 
+                      value={proj.tech?.join(', ') || ''} 
+                      onChange={e => handleProjectChange(idx, 'tech', e.target.value.split(',').map(t => t.trim()).filter(Boolean))} 
+                    />
+                  </div>
+
+                  {/* Dynamic Links Section */}
+                  <div style={{ marginTop: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: '.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}><Link size={13} /> Project Links</span>
+                      <button className="btn btn-outline" onClick={() => addProjectLink(idx)} style={{ fontSize: '.72rem', padding: '4px 8px' }}><Plus size={10} /> Add Link</button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {proj.links?.map((lnk, lIdx) => (
+                        <div key={lIdx} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <input type="text" className="form-control" placeholder="Label (e.g. GitHub)" value={lnk.label} onChange={e => handleProjectLinkChange(idx, lIdx, 'label', e.target.value)} style={{ flex: 1, fontSize: '.8rem' }} />
+                          <input type="text" className="form-control" placeholder="Icon (e.g. fa-github)" value={lnk.icon} onChange={e => handleProjectLinkChange(idx, lIdx, 'icon', e.target.value)} style={{ flex: 1, fontSize: '.8rem' }} />
+                          <input type="text" className="form-control" placeholder="Target URL" value={lnk.url} onChange={e => handleProjectLinkChange(idx, lIdx, 'url', e.target.value)} style={{ flex: 2, fontSize: '.8rem' }} />
+                          <button className="btn btn-outline" onClick={() => removeProjectLink(idx, lIdx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: 6 }}><Trash2 size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Experience Timeline Tab */}
+        {activeTab === 'exp' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h4 style={{ fontWeight: 700, margin: 0 }}>Work Experience Timeline</h4>
+              <button className="btn btn-outline" onClick={addExperience} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.8rem' }}><Plus size={12} /> Add Experience Card</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {portfolioData.experiences?.map((exp, idx) => (
+                <div key={idx} style={{ border: '1px solid var(--border)', padding: 20, borderRadius: 8, backgroundColor: 'var(--bg-primary)' }}>
+                  
+                  {/* Title and reorder controls */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <button 
+                        onClick={() => moveItemInArray('experiences', idx, 'up')} 
+                        className="btn btn-outline"
+                        style={{ padding: 4, cursor: idx === 0 ? 'not-allowed' : 'pointer' }}
+                        disabled={idx === 0}
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button 
+                        onClick={() => moveItemInArray('experiences', idx, 'down')} 
+                        className="btn btn-outline"
+                        style={{ padding: 4, cursor: idx === portfolioData.experiences.length - 1 ? 'not-allowed' : 'pointer' }}
+                        disabled={idx === portfolioData.experiences.length - 1}
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)' }}>Role #{idx + 1}: {exp.title || 'New Job'}</span>
+                    </div>
+
+                    <button className="btn btn-outline" onClick={() => removeExperience(idx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: '6px 12px', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 4 }}><Trash2 size={12} /> Delete Card</button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Period / Years</label>
+                      <input type="text" className="form-control" placeholder="e.g. 2021 — Present" value={exp.period} onChange={e => handleExpChange(idx, 'period', e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Job Title</label>
+                      <input type="text" className="form-control" value={exp.title} onChange={e => handleExpChange(idx, 'title', e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Company Name</label>
+                      <input type="text" className="form-control" value={exp.company} onChange={e => handleExpChange(idx, 'company', e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Bullet Highlights Section */}
+                  <div style={{ marginTop: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: '.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}><Briefcase size={13} /> Key Highlights / Achievements</span>
+                      <button className="btn btn-outline" onClick={() => addExpHighlight(idx)} style={{ fontSize: '.72rem', padding: '4px 8px' }}><Plus size={10} /> Add Bullet Point</button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {exp.highlights?.map((highlight, hIdx) => (
+                        <div key={hIdx} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <input type="text" className="form-control" placeholder="Highlight point..." value={highlight} onChange={e => handleExpHighlightChange(idx, hIdx, e.target.value)} style={{ flex: 1, fontSize: '.85rem' }} />
+                          <button className="btn btn-outline" onClick={() => removeExpHighlight(idx, hIdx)} style={{ color: '#ef4444', border: '1px solid #ef4444', padding: 6 }}><Trash2 size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Developer JSON Tab */}
+        {activeTab === 'json' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-muted)', fontSize: '.85rem', marginBottom: 12 }}>
+              <AlertTriangle size={16} style={{ color: 'var(--accent)' }} />
+              <span>Advanced Mode: Edit the JSON structure representing your portfolio profile. Validations will trigger on publish to ensure data integrity. Supports Ctrl+Z/Ctrl+Y undo/redo stack.</span>
+            </div>
+            <textarea 
+              className="form-control" 
+              rows={22} 
+              style={{ fontFamily: 'monospace', fontSize: '.85rem', lineHeight: '1.4' }}
+              value={jsonText} 
+              onChange={handleJsonChange} 
+            />
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

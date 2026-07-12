@@ -42,12 +42,14 @@ $file = $_FILES['file'];
 // Validate file type
 $allowedTypes = [
     'image/jpeg', 'image/png', 'image/gif', 'image/svg+xml',
-    'image/webp', 'image/x-icon', 'image/vnd.microsoft.icon'
+    'image/webp', 'image/x-icon', 'image/vnd.microsoft.icon',
+    'application/pdf', 'application/msword', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
 
 if (!in_array($file['type'], $allowedTypes)) {
     http_response_code(400);
-    echo json_encode(["message" => "Invalid file type. Allowed: JPG, PNG, GIF, SVG, WebP, ICO"]);
+    echo json_encode(["message" => "Invalid file type. Allowed: JPG, PNG, GIF, SVG, WebP, ICO, PDF, DOC, DOCX"]);
     exit();
 }
 
@@ -60,14 +62,15 @@ if ($file['size'] > 5 * 1024 * 1024) {
 
 // Generate safe unique filename
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-$allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico'];
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'pdf', 'doc', 'docx'];
 if (!in_array($ext, $allowedExtensions)) {
     http_response_code(400);
-    echo json_encode(["message" => "Invalid file extension."]);
+    echo json_encode(["message" => "Invalid file extension. Allowed: JPG, PNG, GIF, SVG, WebP, ICO, PDF, DOC, DOCX"]);
     exit();
 }
 
-$safeName = 'img_' . bin2hex(random_bytes(8)) . '.' . $ext;
+$prefix = in_array($ext, ['pdf', 'doc', 'docx']) ? 'doc_' : 'img_';
+$safeName = $prefix . bin2hex(random_bytes(8)) . '.' . $ext;
 $destination = $uploadDir . $safeName;
 $folder = isset($_POST['folder']) ? trim($_POST['folder']) : 'general';
 
