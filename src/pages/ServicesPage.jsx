@@ -1,295 +1,361 @@
-import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Star, Shield, Server, Code, Laptop, Smartphone, Database, Globe, Cloud, Palette, Cpu, Zap, Settings, LayoutTemplate, Terminal } from 'lucide-react';
-import { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import {
+  ArrowRight, Code, Compass, HeartHandshake, HelpCircle,
+  Server, ShoppingCart, Smartphone, Terminal, Zap, Loader2, Mail,
+  CheckCircle, Layers
+} from 'lucide-react';
+
 import { CmsContext } from '../CmsContext';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
 import { API_BASE_URL } from '../config';
 
-const ICON_MAP = { Code, Laptop, Smartphone, Server, Database, Shield, Globe, Cloud, Palette, Cpu, Zap, Settings, LayoutTemplate, Terminal };
+// ----------------------------------------------------------------------
+// Constants & Configuration
+// ----------------------------------------------------------------------
+const gradientColors = [
+  ['#6366f1', '#818cf8'], // Indigo
+  ['#14b8a6', '#2dd4bf'], // Teal
+  ['#f59e0b', '#fbbf24'], // Amber
+  ['#8b5cf6', '#a78bfa'], // Violet
+  ['#ec4899', '#f472b6'], // Pink
+  ['#3b82f6', '#60a5fa'], // Blue
+  ['#10b981', '#34d399'], // Emerald
+  ['#f43f5e', '#fb7185'], // Rose
+];
 
-const getIcon = (name) => {
-  return ICON_MAP[name] || Terminal;
+const iconMap = {
+  Code: <Code size={28} />,
+  Smartphone: <Smartphone size={28} />,
+  Compass: <Compass size={28} />,
+  Zap: <Zap size={28} />,
+  ShoppingCart: <ShoppingCart size={28} />,
+  Terminal: <Terminal size={28} />,
+  Server: <Server size={28} />,
+  HeartHandshake: <HeartHandshake size={28} />
 };
 
+// ----------------------------------------------------------------------
+// Animation Variants
+// ----------------------------------------------------------------------
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12 }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 40, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: 'spring', stiffness: 70, damping: 16 }
+  }
+};
+
+// ----------------------------------------------------------------------
+// Component
+// ----------------------------------------------------------------------
 export default function ServicesPage() {
   const navigate = useNavigate();
   const { cms } = useContext(CmsContext) || {};
+  
   const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currency, setCurrency] = useState('USD');
-  const [exchangeRate, setExchangeRate] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fully CMS controlled text strings
-  const pageTitle = cms?.services_page_title || 'Engineering Excellence';
-  const pageSubtitle = cms?.services_page_subtitle || 'We deliver dependable digital products that scale with your business goals and user expectations.';
-  const pageBadge = cms?.services_page_badge || 'Our Capabilities';
-  const ctaTitle = cms?.services_page_cta_title || 'Ready to build your next digital product?';
-  const ctaDesc = cms?.services_page_cta_desc || 'Let us help you define the right scope, timeline, and roadmap for your next launch.';
-  const ctaBtn1 = cms?.services_page_cta_btn1 || 'Schedule a Call';
-  const ctaBtn2 = cms?.services_page_cta_btn2 || 'View Portfolio';
-
-  useEffect(() => {
-    const initCurrency = async () => {
-      try {
-        const ipRes = await fetch('https://ipapi.co/currency/');
-        const detectedCurrency = (await ipRes.text()).trim();
-        
-        if (detectedCurrency && detectedCurrency.length === 3) {
-          setCurrency(detectedCurrency);
-          if (detectedCurrency !== 'USD') {
-            const rateRes = await fetch('https://open.er-api.com/v6/latest/USD');
-            const rateData = await rateRes.json();
-            if (rateData && rateData.rates && rateData.rates[detectedCurrency]) {
-              setExchangeRate(rateData.rates[detectedCurrency]);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Currency detection failed:", err);
-      }
-    };
-    initCurrency();
-  }, []);
+  const pageTitle = cms?.home_services_title || cms?.services_page_title || 'Our Core Services';
+  const pageSubtitle = cms?.home_services_description || cms?.services_page_subtitle || 'Comprehensive digital solutions designed to help businesses grow, scale, and operate efficiently.';
 
   useEffect(() => {
     window.scrollTo(0, 0);
     document.title = `${pageTitle} | ${cms?.site_logo_text || 'Brainfeels Tech'}`;
 
-    setLoading(true);
-    fetch(`${API_BASE_URL}/services.php`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          // Parse the comma-separated strings from the DB into arrays
-          const parsedServices = data.map(item => ({
-            ...item,
-            featuresList: item.features ? item.features.split(',').map(s => s.trim()).filter(Boolean) : [],
-            benefitsList: item.benefits ? item.benefits.split(',').map(s => s.trim()).filter(Boolean) : [],
-            basicPrice: Number(item.basic_price || 0),
-            standardPrice: Number(item.standard_price || 0),
-            premiumPrice: Number(item.premium_price || 0),
-          }));
-          setServices(parsedServices);
+    let isMounted = true;
+
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/services.php`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        
+        if (isMounted && Array.isArray(data)) {
+          setServices(data);
         }
-      })
-      .catch((error) => {
-        console.error('Failed to load services:', error);
-      })
-      .finally(() => setLoading(false));
+      } catch (error) {
+        console.error('Error fetching services:', error);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+    return () => { isMounted = false; };
   }, [pageTitle, cms]);
 
-  const formatPrice = (usdPrice) => {
-    if (!usdPrice) return formatPrice(0);
-    const converted = usdPrice * exchangeRate;
-    return new Intl.NumberFormat(undefined, { 
-      style: 'currency', 
-      currency: currency,
-      maximumFractionDigits: 0
-    }).format(converted);
-  };
-
-  const handleContact = (service) => {
+  const handleContactService = (serviceName) => {
     navigate('/contact', {
       state: {
-        prefilledService: service.name,
-        prefilledMessage: `Hi, I am interested in your ${service.name} service. Please share next steps and availability.`
+        prefilledService: serviceName,
+        prefilledMessage: `Hello, I am interested in the ${serviceName} service. Let's discuss my project.`
       }
     });
   };
 
+  const parseBenefits = (str) => {
+    if (!str) return [];
+    return str.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4);
+  };
+
   return (
-    <div className="page-container flex min-h-screen flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-x-hidden">
-      {/* Background Globs */}
+    <div className="page-container flex min-h-screen flex-col bg-[var(--bg-primary)] text-[var(--text-primary)] relative">
+      
+      {/* Decorative Background Elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute left-[-20%] top-[-10%] h-[500px] w-[500px] rounded-full bg-[var(--primary)]/15 blur-[150px]" />
-        <div className="absolute right-[-20%] top-[20%] h-[400px] w-[400px] rounded-full bg-[var(--accent)]/10 blur-[150px]" />
-        <div className="absolute left-[20%] bottom-[-20%] h-[600px] w-[600px] rounded-full bg-[var(--secondary)]/15 blur-[150px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[var(--primary)]/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-[var(--accent)]/5 blur-[150px]" />
       </div>
 
       <Navbar />
 
-      <main className="relative z-10 flex-grow pt-32 pb-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          {/* Dynamic Hero Section */}
-          <section className="mx-auto mb-24 max-w-4xl text-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)] shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)] backdrop-blur-md"
-            >
-              <span className="h-2 w-2 rounded-full bg-[var(--primary)] animate-pulse" />
-              {pageBadge}
-            </motion.div>
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="mt-8 text-5xl font-black tracking-tight text-[var(--text-primary)] sm:text-6xl lg:text-7xl"
-            >
-              {pageTitle}
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-8 mx-auto max-w-2xl text-lg leading-relaxed text-[var(--text-secondary)] sm:text-xl"
-            >
-              {pageSubtitle}
-            </motion.p>
-          </section>
+      <main className="relative z-10 flex-grow pt-32 pb-24 container mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* ═══════════════════ Hero Section ═══════════════════ */}
+        <section className="mx-auto mb-20 max-w-4xl text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--primary)]/20 bg-[var(--primary)]/5 text-[var(--primary)] text-xs font-semibold tracking-widest uppercase mb-6"
+          >
+            <Layers size={13} />
+            Our Expertise
+          </motion.div>
 
-          {/* Services Grid Linked to Database */}
-          {loading ? (
-            <div className="py-24 text-center">
-              <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--primary)]" />
-              <p className="text-sm font-medium text-[var(--text-secondary)] tracking-widest uppercase">Loading services...</p>
-            </div>
-          ) : (
-            <div className="grid gap-12 lg:grid-cols-2">
-              {services.length > 0 ? (
-                services.map((service, idx) => {
-                  const Icon = getIcon(service.icon_name);
-                  return (
-                    <motion.article
-                      key={service.id}
-                      initial={{ opacity: 0, y: 40 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: idx * 0.1, ease: 'easeOut' }}
-                      className="group relative flex flex-col overflow-hidden rounded-2xl bg-[var(--primary)] text-white shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
-                    >
-                      <div className="flex flex-grow flex-col p-8 sm:p-10">
-                        {/* Header: Icon & Title */}
-                        <div className="mb-6 flex items-start gap-6">
-                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-inner transition-transform duration-500 group-hover:scale-110">
-                            <Icon size={32} />
-                          </div>
-                          <div>
-                            <h2 className="text-3xl font-black tracking-tight text-white">
-                              {service.name}
-                            </h2>
-                            <p className="mt-2 text-sm leading-relaxed text-white/90">
-                              {service.description}
-                            </p>
-                          </div>
-                        </div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, type: "spring" }}
+            className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-5 leading-tight text-transparent bg-clip-text bg-gradient-to-br from-[var(--text-primary)] via-[var(--text-primary)] to-[var(--text-secondary)]"
+          >
+            {pageTitle}
+          </motion.h1>
 
-                        {/* Pricing Tiers if available */}
-                        <div className="mb-8 grid grid-cols-3 gap-3 rounded-xl bg-black/20 p-3">
-                          <div className="rounded-lg bg-white/10 p-3 text-center transition-colors group-hover:bg-white/20">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Basic</p>
-                            <p className="mt-1 text-lg font-bold text-white">{formatPrice(service.basicPrice)}</p>
-                          </div>
-                          <div className="rounded-lg bg-white/10 p-3 text-center transition-colors group-hover:bg-white/20">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Standard</p>
-                            <p className="mt-1 text-lg font-bold text-white">{formatPrice(service.standardPrice)}</p>
-                          </div>
-                          <div className="rounded-lg bg-white/10 p-3 text-center transition-colors group-hover:bg-white/20">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/70">Premium</p>
-                            <p className="mt-1 text-lg font-bold text-white">{formatPrice(service.premiumPrice)}</p>
-                          </div>
-                        </div>
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-base sm:text-lg text-[var(--text-secondary)] max-w-2xl mx-auto leading-relaxed"
+          >
+            {pageSubtitle}
+          </motion.p>
+        </section>
 
-                        {/* Two Column Layout for Features & Benefits */}
-                        <div className="mb-8 grid gap-6 sm:grid-cols-2 flex-grow">
-                          {/* Features */}
-                          {service.featuresList && service.featuresList.length > 0 && (
-                            <div className="flex flex-col">
-                              <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/90">
-                                <Code size={14} className="text-white" /> Core Features
-                              </h3>
-                              <ul className="space-y-3">
-                                {service.featuresList.map((feature, i) => (
-                                  <li key={i} className="flex items-start gap-3 text-sm font-medium text-white/80">
-                                    <span className="mt-0.5 flex shrink-0 items-center justify-center text-white">
-                                      <CheckCircle2 size={16} />
-                                    </span>
-                                    <span className="leading-tight">{feature}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                          {/* Benefits */}
-                          {service.benefitsList && service.benefitsList.length > 0 && (
-                            <div className="flex flex-col">
-                              <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/90">
-                                <Star size={14} className="text-[#fbbf24]" /> Client Benefits
-                              </h3>
-                              <ul className="space-y-3">
-                                {service.benefitsList.map((benefit, i) => (
-                                  <li key={i} className="flex items-start gap-3 text-sm font-medium text-white/80">
-                                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
-                                      <Shield size={10} />
-                                    </span>
-                                    <span className="leading-tight">{benefit}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => handleContact(service)}
-                          className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 text-sm font-bold text-[var(--primary)] transition-all duration-300 hover:bg-slate-100 hover:shadow-lg group-hover:gap-4"
-                        >
-                          Request a Quote <ArrowRight size={16} />
-                        </button>
-                      </div>
-                    </motion.article>
-                  );
-                })
-              ) : (
+        {/* ═══════════════════ Services Grid ═══════════════════ */}
+        <section className="mb-24">
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div 
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-32"
+              >
+                <Loader2 className="w-12 h-12 text-[var(--primary)] animate-spin mb-4" />
+                <p className="text-sm font-semibold tracking-widest uppercase text-[var(--text-secondary)]">
+                  Loading Capabilities...
+                </p>
+              </motion.div>
+            ) : services.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.6, type: "spring", bounce: 0.4 }}
+                className="flex flex-col items-center justify-center py-28 px-6 relative overflow-hidden rounded-[3rem] border border-[var(--border)] bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-primary)] shadow-2xl group"
+              >
                 <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="col-span-full flex flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-[var(--border)] bg-[var(--bg-secondary)] py-32 px-8 text-center"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="absolute top-[-50%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[var(--primary)]/5 blur-[80px] pointer-events-none"
+                />
+                <motion.div 
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                  className="absolute bottom-[-50%] right-[-10%] w-[400px] h-[400px] rounded-full bg-[var(--accent)]/5 blur-[80px] pointer-events-none"
+                />
+                <motion.div 
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="relative z-10 w-24 h-24 rounded-full bg-gradient-to-tr from-[var(--primary)]/10 to-[var(--accent)]/10 border border-[var(--primary)]/20 flex items-center justify-center mb-8 text-[var(--primary)]"
                 >
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--bg-primary)] text-[var(--text-muted)]">
-                    <Database size={32} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-[var(--text-primary)]">No services configured yet</h3>
-                  <p className="mt-2 text-lg text-[var(--text-secondary)] max-w-md">The admin needs to configure service offerings in the dashboard before they appear here.</p>
+                  <Terminal size={40} className="drop-shadow-md" />
                 </motion.div>
-              )}
-            </div>
-          )}
+                <h3 className="relative z-10 text-3xl sm:text-4xl font-black mb-4 text-[var(--text-primary)] tracking-tight">
+                  No Services Found
+                </h3>
+                <p className="relative z-10 text-[var(--text-secondary)] text-center max-w-lg mb-10 text-lg leading-relaxed font-medium">
+                  We are currently updating our service offerings. Please check back later or contact us directly to discuss your project needs.
+                </p>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/contact')}
+                  className="btn btn-primary relative z-10 flex items-center gap-2"
+                  style={{ padding: '14px 32px', borderRadius: '10px' }}
+                >
+                  <Mail size={18} /> 
+                  Contact Us Now
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="grid"
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                {services.map((service, index) => {
+                  const [color1, color2] = gradientColors[index % gradientColors.length];
+                  const benefits = parseBenefits(service.benefits);
+                  
+                  return (
+                    <motion.div
+                      key={service.id || index}
+                      variants={cardVariants}
+                      whileHover={{ y: -8 }}
+                      className="group relative flex flex-col overflow-hidden cursor-pointer"
+                      style={{ '--card-accent': color1 }}
+                      onClick={() => handleContactService(service.name)}
+                    >
+                      {/* Card base layer */}
+                      <div className="absolute inset-0 bg-[var(--bg-secondary)] border border-[var(--border)] transition-all duration-500 group-hover:border-transparent" />
+                      
+                      {/* Gradient border glow on hover */}
+                      <div 
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${color1}30, transparent 40%, transparent 60%, ${color2}25)`,
+                          padding: '1px',
+                          mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                          maskComposite: 'exclude',
+                          WebkitMaskComposite: 'xor'
+                        }}
+                      />
 
-          {/* Dynamic CTA Section */}
-          <section className="mt-24 mb-12">
-            <div className="relative overflow-hidden rounded-[3rem] border border-[var(--border)] bg-[var(--text-primary)] p-12 text-center shadow-2xl lg:p-20">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, var(--primary) 0%, transparent 70%)' }} />
-              
-              <div className="relative z-10 mx-auto max-w-3xl">
-                <h2 className="text-4xl font-black tracking-tight text-[var(--bg-primary)] sm:text-5xl lg:text-6xl">{ctaTitle}</h2>
-                <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[var(--bg-primary)]/70">{ctaDesc}</p>
-                
-                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <button
-                    onClick={() => navigate('/contact', { state: { prefilledService: 'scoping', prefilledMessage: 'Hi, I would like to book a call regarding a new project.' } })}
-                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-8 py-4 text-sm font-bold text-white shadow-[0_0_30px_rgba(var(--primary-rgb),0.4)] transition-transform hover:scale-105"
-                  >
-                    {ctaBtn1}
-                    <ArrowRight size={16} />
-                  </button>
-                  <button
-                    onClick={() => navigate('/portfolio')}
-                    className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-[var(--bg-primary)]/20 bg-white/5 px-8 py-4 text-sm font-bold text-[var(--bg-primary)] backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    {ctaBtn2}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+                      {/* Ambient glow behind card */}
+                      <div 
+                        className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none blur-xl -z-10"
+                        style={{ background: `radial-gradient(ellipse at 50% 80%, ${color1}18, transparent 70%)` }}
+                      />
+
+                      {/* ─── Card Content ─── */}
+                      <div className="relative z-10 flex flex-col items-center h-full p-8 pb-6 text-center">
+                        
+                        {/* Icon */}
+                        <div className="relative mb-5">
+                          <div 
+                            className="w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg mx-auto"
+                            style={{
+                              background: `linear-gradient(135deg, ${color1}18, ${color2}12)`,
+                              color: color1,
+                              border: `1px solid ${color1}25`
+                            }}
+                          >
+                            {iconMap[service.icon_name] || <HelpCircle size={28} />}
+                          </div>
+                          {/* Pulse dot */}
+                          <div 
+                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--bg-secondary)] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                            style={{ backgroundColor: color1 }}
+                          />
+                          {/* Number badge */}
+                          <span 
+                            className="absolute -top-2 -left-2 text-[10px] font-bold tracking-widest px-2.5 py-0.5 rounded-full border transition-colors duration-300"
+                            style={{ 
+                              color: color1,
+                              borderColor: `${color1}25`,
+                              backgroundColor: `${color1}08`
+                            }}
+                          >
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                        </div>
+
+                        {/* Service Name */}
+                        <h3 className="text-xl font-bold text-[var(--text-primary)] leading-tight transition-colors duration-300 group-hover:text-[var(--primary)] mb-4">
+                          {service.name}
+                        </h3>
+                        
+                        {/* Optional uploaded image */}
+                        {service.image_url && (
+                          <div className="w-full h-48 mb-5 overflow-hidden relative group-hover:shadow-md transition-all duration-300">
+                            <img 
+                              src={service.image_url} 
+                              alt={service.name} 
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                            />
+                            <div 
+                              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                              style={{ background: `linear-gradient(to top, ${color1}30, transparent 60%)` }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-5">
+                          {service.description}
+                        </p>
+
+                        {/* Benefits List */}
+                        {benefits.length > 0 && (
+                          <div className="flex flex-col gap-2.5 mb-6 items-center">
+                            {benefits.map((benefit, bIdx) => (
+                              <div key={bIdx} className="flex items-center gap-2.5">
+                                <CheckCircle size={14} style={{ color: color1, flexShrink: 0 }} />
+                                <span className="text-xs text-[var(--text-secondary)] font-medium leading-snug">{benefit}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Flex spacer */}
+                        <div className="flex-grow" />
+
+                        {/* Footer CTA */}
+                        <div className="pt-5 border-t border-[var(--border)] mt-2 w-full">
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="text-sm font-semibold text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors duration-300">
+                              Get Started
+                            </span>
+                            <div 
+                              className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                              style={{ 
+                                backgroundColor: `${color1}12`,
+                                color: color1
+                              }}
+                            >
+                              <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+
       </main>
-
+      
       <Footer />
     </div>
   );

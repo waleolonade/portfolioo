@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useRef } from 'react';
 import { AdminContext } from '../AdminContext';
 import { API_BASE_URL } from '../../config';
 import { 
@@ -23,7 +23,8 @@ import {
   TrendingUp,
   DollarSign,
   Wand2,
-  List
+  List,
+  Upload
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -47,6 +48,53 @@ const ServiceIcon = ({ name, size = 20, className = "", style = {} }) => {
   const IconComponent = ICON_MAP[name] || Code;
   return <IconComponent size={size} className={className} style={style} />;
 };
+
+/* ═══════════════════════════════════════════════
+   Shared: Image Uploader with Drag & Drop
+   ═══════════════════════════════════════════════ */
+function ImageUploader({ label, value, onChange, hint }) {
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef(null);
+  const upload = async (file) => {
+    if (!file) return;
+    setUploading(true); setError('');
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const res = await fetch(`${API_BASE_URL}/upload.php`, {
+        method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` }, body: fd
+      });
+      const d = await res.json();
+      if (d.success) { onChange(d.url); } else setError(d.message || 'Upload failed');
+    } catch { setError('Network error'); } finally { setUploading(false); }
+  };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {label && <label className="form-label">{label}</label>}
+      <div onDrop={e => { e.preventDefault(); setDragActive(false); upload(e.dataTransfer?.files?.[0]); }}
+        onDragOver={e => { e.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)}
+        onClick={() => fileRef.current?.click()}
+        style={{ border: `2px dashed ${dragActive ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 'var(--radius-md)',
+          padding: value ? 10 : '24px 16px', textAlign: 'center', cursor: 'pointer',
+          background: dragActive ? 'rgba(59,130,246,.06)' : 'var(--bg-secondary)', transition: 'all .2s' }}>
+        <input ref={fileRef} type="file" accept="image/*" onChange={e => upload(e.target.files?.[0])} style={{ display: 'none' }} />
+        {uploading ? <span className="cms-spinner" /> : value ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src={value} alt="" style={{ width: 60, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }} />
+            <span style={{ flex: 1, textAlign: 'left', fontSize: '.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>{value.split('/').pop()}</span>
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>
+          </div>
+        ) : (
+          <><Upload size={22} style={{ color: 'var(--text-muted)', marginBottom: 4 }} /><p style={{ fontSize: '.82rem', color: 'var(--text-secondary)', margin: '0 0 2px' }}><strong>Click to upload</strong> or drag & drop</p><p style={{ fontSize: '.68rem', color: 'var(--text-muted)', margin: 0 }}>PNG, JPG, SVG, WebP · Max 5 MB</p></>
+        )}
+      </div>
+      {error && <p style={{ color: '#ef4444', fontSize: '.78rem', marginTop: 4 }}>{error}</p>}
+      <input type="text" className="form-control" placeholder="Or paste URL…" value={value || ''} onChange={e => onChange(e.target.value)} style={{ marginTop: 6, fontSize: '.78rem' }} />
+      {hint && <small style={{ color: 'var(--text-muted)', marginTop: 3, display: 'block' }}>{hint}</small>}
+    </div>
+  );
+}
 
 export default function ServicesAdmin() {
   const { 
@@ -76,6 +124,7 @@ export default function ServicesAdmin() {
         benefits: data.benefits || '',
         features: data.features || '',
         icon_name: data.icon_name || 'Code',
+        image_url: data.image_url || '',
         basic_price: data.basic_price || 0,
         standard_price: data.standard_price || 0,
         premium_price: data.premium_price || 0
@@ -89,6 +138,7 @@ export default function ServicesAdmin() {
         benefits: '',
         features: '',
         icon_name: 'Code',
+        image_url: '',
         basic_price: 0,
         standard_price: 0,
         premium_price: 0
@@ -352,6 +402,13 @@ export default function ServicesAdmin() {
                        ))}
                      </div>
                    </div>
+
+                   <ImageUploader 
+                     label="Service Cover Image (Optional)" 
+                     value={serviceForm.image_url} 
+                     onChange={(url) => setServiceForm(prev => ({ ...prev, image_url: url }))} 
+                     hint="Upload an image to display on the service card."
+                   />
 
                    <div className="form-group">
                      <label>Service Description *</label>

@@ -149,6 +149,8 @@ export default function Navbar({ cms = {} }) {
   return (
     <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''} ${isSticky ? 'navbar--sticky' : ''}`} style={{
       position: isSticky ? 'sticky' : 'relative',
+      top: isSticky ? 0 : 'auto',
+      zIndex: 50,
       backgroundColor: isTransparent ? 'transparent' : scrolled ? 'rgba(var(--bg-secondary-rgb), 0.85)' : 'var(--bg-secondary)',
       borderBottom: isTransparent ? 'none' : '1px solid var(--border)',
       boxShadow: isTransparent ? 'none' : scrolled ? '0 1px 12px rgba(0,0,0,0.08)' : 'none',

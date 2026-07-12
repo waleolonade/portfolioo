@@ -40,6 +40,7 @@ switch ($method) {
         $benefits = isset($inputData['benefits']) ? trim($inputData['benefits']) : '';
         $features = isset($inputData['features']) ? trim($inputData['features']) : '';
         $icon_name = isset($inputData['icon_name']) ? trim($inputData['icon_name']) : 'Code';
+        $image_url = isset($inputData['image_url']) ? trim($inputData['image_url']) : '';
         $basic_price = isset($inputData['basic_price']) ? floatval($inputData['basic_price']) : 0.00;
         $standard_price = isset($inputData['standard_price']) ? floatval($inputData['standard_price']) : 0.00;
         $premium_price = isset($inputData['premium_price']) ? floatval($inputData['premium_price']) : 0.00;
@@ -51,8 +52,8 @@ switch ($method) {
         }
         
         try {
-            $stmt = $pdo->prepare("INSERT INTO `services` (`name`, `description`, `benefits`, `features`, `icon_name`, `basic_price`, `standard_price`, `premium_price`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $description, $benefits, $features, $icon_name, $basic_price, $standard_price, $premium_price]);
+            $stmt = $pdo->prepare("INSERT INTO `services` (`name`, `description`, `benefits`, `features`, `icon_name`, `image_url`, `basic_price`, `standard_price`, `premium_price`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $description, $benefits, $features, $icon_name, $image_url, $basic_price, $standard_price, $premium_price]);
             
             echo json_encode([
                 "success" => true,
@@ -77,6 +78,7 @@ switch ($method) {
         $benefits = isset($inputData['benefits']) ? trim($inputData['benefits']) : '';
         $features = isset($inputData['features']) ? trim($inputData['features']) : '';
         $icon_name = isset($inputData['icon_name']) ? trim($inputData['icon_name']) : 'Code';
+        $image_url = isset($inputData['image_url']) ? trim($inputData['image_url']) : '';
         $basic_price = isset($inputData['basic_price']) ? floatval($inputData['basic_price']) : 0.00;
         $standard_price = isset($inputData['standard_price']) ? floatval($inputData['standard_price']) : 0.00;
         $premium_price = isset($inputData['premium_price']) ? floatval($inputData['premium_price']) : 0.00;
@@ -88,8 +90,8 @@ switch ($method) {
         }
         
         try {
-            $stmt = $pdo->prepare("UPDATE `services` SET `name` = ?, `description` = ?, `benefits` = ?, `features` = ?, `icon_name` = ?, `basic_price` = ?, `standard_price` = ?, `premium_price` = ? WHERE `id` = ?");
-            $stmt->execute([$name, $description, $benefits, $features, $icon_name, $basic_price, $standard_price, $premium_price, $id]);
+            $stmt = $pdo->prepare("UPDATE `services` SET `name` = ?, `description` = ?, `benefits` = ?, `features` = ?, `icon_name` = ?, `image_url` = ?, `basic_price` = ?, `standard_price` = ?, `premium_price` = ? WHERE `id` = ?");
+            $stmt->execute([$name, $description, $benefits, $features, $icon_name, $image_url, $basic_price, $standard_price, $premium_price, $id]);
             
             echo json_encode([
                 "success" => true,
