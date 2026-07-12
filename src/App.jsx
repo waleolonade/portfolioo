@@ -246,6 +246,9 @@ function App() {
 
   useEffect(() => {
     reloadCms();
+    // Silent background trigger for booking scheduler email reminders
+    fetch(`${API_BASE_URL}/booking_scheduler.php`)
+      .catch(err => console.error('Failed to trigger booking scheduler', err));
   }, []);
 
   useEffect(() => {

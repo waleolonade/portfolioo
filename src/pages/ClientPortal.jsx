@@ -21,6 +21,7 @@ export default function ClientPortal() {
   const [messages, setMessages] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [files, setFiles] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   
   // UI States
   const [activeTab, setActiveTab] = useState('admin'); // 'admin' or 'bot'
@@ -97,20 +98,140 @@ export default function ClientPortal() {
     }
   };
 
-  // Initialize and Poll
-  useEffect(() => {
-    if (token) {
-      fetchData();
-      fetchMessages();
-
-      // Poll chat messages every 3 seconds for simulated real-time response
-      const interval = setInterval(() => {
-        fetchMessages();
-      }, 3000);
-
-      return () => clearInterval(interval);
+  // Fetch Notifications
+  const fetchNotifications = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications.php`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
     }
-  }, [token]);
+  };
+
+  // Mark notifications as read
+  const markNotificationsAsRead = async (id = 0) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications.php`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        if (id > 0) {
+          setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_status: 1 } : n));
+        } else {
+          setNotifications(prev => prev.map(n => ({ ...n, read_status: 1 })));
+        }
+      }
+    } catch (err) {
+      console.error('Error marking notifications as read:', err);
+    }
+  };
+
+  // Trigger test notification
+  const triggerTestNotification = async () => {
+    if (!token || !clientUser) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications.php`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_id: clientUser.id,
+          title: "Real-time Notification",
+          message: "Welcome to your workspace! Real-time alerts are fully active."
+        })
+      });
+    } catch (err) {
+      console.error('Test notification trigger error:', err);
+    }
+  };
+
+  // Initialize data, chat polling, and WebSocket notifications
+  useEffect(() => {
+    if (!token || !clientUser) return;
+
+    fetchData();
+    fetchMessages();
+    fetchNotifications();
+
+    // 1. Chat message polling
+    const chatInterval = setInterval(() => {
+      fetchMessages();
+    }, 3000);
+
+    // 2. Real-time WebSocket connection
+    let ws = null;
+    let pollInterval = null;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket('ws://localhost:8090');
+
+      ws.onopen = () => {
+        console.log('Real-time notifications WebSocket connected');
+        // Register client ID with WebSocket server
+        ws.send(JSON.stringify({ type: 'register', client_id: clientUser.id }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'notification') {
+            // Prepend new notification to list
+            setNotifications(prev => [data, ...prev]);
+
+            // Trigger browser notification pop-up
+            if (Notification.permission === 'granted') {
+              new Notification(data.title, { body: data.message });
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing socket notification payload', err);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.warn('WebSocket connection error. Falling back to HTTP polling.', err);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket connection closed. Starting polling fallback.');
+        startPollingFallback();
+      };
+    };
+
+    const startPollingFallback = () => {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => {
+        fetchNotifications();
+      }, 10000); // Check notifications every 10 seconds
+    };
+
+    // Request system notifications permission
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    connectWebSocket();
+
+    return () => {
+      clearInterval(chatInterval);
+      if (ws) ws.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [token, clientUser]);
 
   // Load payment gateway CDN scripts
   useEffect(() => {
@@ -395,6 +516,8 @@ export default function ClientPortal() {
     return <ClientAuth onAuthSuccess={handleAuthSuccess} />;
   }
 
+  const unreadCount = notifications.filter(n => Number(n.read_status) === 0).length;
+
   return (
     <div className="page-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
       <Navbar />
@@ -422,23 +545,52 @@ export default function ClientPortal() {
                   style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
                 >
                   <Bell size={18} />
-                  <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: 'var(--accent)', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    2
-                  </span>
+                  {unreadCount > 0 && (
+                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: 'var(--accent)', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
                 {showNotifications && (
-                  <div style={{ position: 'absolute', top: '120%', right: 0, width: '300px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 50, padding: '10px' }}>
-                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>Notifications</div>
-                    <div style={{ fontSize: '0.85rem', padding: '8px', borderBottom: '1px solid var(--bg-secondary)' }}>
-                      <strong>Setup Complete</strong>
-                      <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>Your workspace has been fully configured.</p>
-                      <small style={{ color: 'var(--primary)', marginTop: '4px', display: 'block' }}>2 hours ago</small>
+                  <div style={{ position: 'absolute', top: '120%', right: 0, width: '320px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 50, padding: '12px' }}>
+                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Notifications</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={triggerTestNotification} style={{ border: 'none', background: 'none', cursor: 'pointer' }} className="text-[10px] text-slate-400 hover:text-indigo-500" title="Simulate incoming WebSocket notification">Test Notify</button>
+                        {unreadCount > 0 && (
+                          <button onClick={() => markNotificationsAsRead(0)} style={{ border: 'none', background: 'none', cursor: 'pointer' }} className="text-[10px] text-indigo-500 hover:underline">Mark all read</button>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.85rem', padding: '8px' }}>
-                      <strong>New Invoice Generated</strong>
-                      <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)' }}>An invoice for Milestone 1 is ready.</p>
-                      <small style={{ color: 'var(--primary)', marginTop: '4px', display: 'block' }}>1 day ago</small>
-                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="text-center text-xs text-slate-400 py-6">No notifications yet</div>
+                    ) : (
+                      <div style={{ maxHeight: '250px', overflowY: 'auto' }} className="custom-scroll">
+                        {notifications.map(n => (
+                          <div 
+                            key={n.id} 
+                            onClick={() => Number(n.read_status) === 0 && markNotificationsAsRead(n.id)} 
+                            style={{ 
+                              fontSize: '0.82rem', 
+                              padding: '8px', 
+                              borderBottom: '1px solid var(--border)', 
+                              opacity: Number(n.read_status) === 1 ? 0.65 : 1, 
+                              cursor: Number(n.read_status) === 1 ? 'default' : 'pointer',
+                              backgroundColor: Number(n.read_status) === 0 ? 'rgba(var(--primary-rgb), 0.02)' : 'transparent'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                              <strong style={{ color: 'var(--text-primary)' }}>{n.title}</strong>
+                              {Number(n.read_status) === 0 && <span style={{ width: '6px', height: '6px', backgroundColor: 'var(--accent)', borderRadius: '50%', shrink: 0 }}></span>}
+                            </div>
+                            <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: '1.4' }}>{n.message}</p>
+                            <small style={{ color: 'var(--primary)', marginTop: '4px', display: 'block', fontSize: '0.7rem' }}>
+                              {new Date(n.created_at.replace(/-/g, '/')).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                            </small>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
