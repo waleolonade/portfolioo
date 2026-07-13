@@ -98,3 +98,30 @@ function verify_user_role($allowedRoles, $pdo) {
         exit();
     }
 }
+
+function create_notification($clientId, $title, $message, $pdo) {
+    try {
+        $stmt = $pdo->prepare("INSERT INTO `client_notifications` (`client_id`, `title`, `message`) VALUES (?, ?, ?)");
+        $stmt->execute([$clientId, $title, $message]);
+        $insertId = $pdo->lastInsertId();
+
+        // Broadcast trigger to WebSocket Server
+        $socketPayload = json_encode([
+            "type" => "notification",
+            "client_id" => $clientId,
+            "id" => $insertId,
+            "title" => $title,
+            "message" => $message,
+            "created_at" => date('Y-m-d H:i:s')
+        ]);
+
+        $fp = @fsockopen("127.0.0.1", 8090, $errno, $errstr, 0.5);
+        if ($fp) {
+            fwrite($fp, "BROADCAST_JSON:" . $socketPayload . "\n");
+            fclose($fp);
+        }
+        return $insertId;
+    } catch (Exception $e) {
+        return false;
+    }
+}

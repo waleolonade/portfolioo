@@ -195,48 +195,7 @@ const ServicesPage = () => {
       
       <main className="relative z-10 flex-grow pt-24">
         <div className="services-container">
-          {/* ===== HERO ===== */}
-          <header className="hero-grid">
-            <div className="hero-left">
-              <div className="badge">{bioInfo.badge}</div>
-              <h1>{bioInfo.name} <span className="highlight">{bioInfo.lastName}</span></h1>
-              <div className="title-role">
-                <span>{bioInfo.role.split(' · ')[0]}</span> · {bioInfo.role.split(' · ').slice(1).join(' · ')}
-              </div>
-              <p className="bio">{bioInfo.bio}</p>
-              <div className="hero-stats">
-                {bioInfo.stats.map((stat, idx) => (
-                  <div key={idx} className="stat">
-                    <span className="number">{stat.number}</span>
-                    <span className="label">{stat.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="hero-right">
-              <div className="avatar">
-                {bioInfo.avatarUrl ? (
-                  <img src={bioInfo.avatarUrl} alt={`${bioInfo.name} ${bioInfo.lastName}`} />
-                ) : (
-                  (bioInfo.name?.[0] || 'J') + (bioInfo.lastName?.[0] || 'W')
-                )}
-              </div>
-              <div className="social-links">
-                <a href={bioInfo.socials.github} onClick={(e) => handleLinkClick(e, bioInfo.socials.github)} target="_blank" rel="noopener noreferrer">
-                  <i className="fab fa-github"></i>
-                </a>
-                <a href={bioInfo.socials.linkedin} onClick={(e) => handleLinkClick(e, bioInfo.socials.linkedin)} target="_blank" rel="noopener noreferrer">
-                  <i className="fab fa-linkedin-in"></i>
-                </a>
-                <a href={bioInfo.socials.twitter} onClick={(e) => handleLinkClick(e, bioInfo.socials.twitter)} target="_blank" rel="noopener noreferrer">
-                  <i className="fab fa-x-twitter"></i>
-                </a>
-                <a href={bioInfo.socials.dev} onClick={(e) => handleLinkClick(e, bioInfo.socials.dev)} target="_blank" rel="noopener noreferrer">
-                  <i className="fab fa-dev"></i>
-                </a>
-              </div>
-            </div>
-          </header>
+          {/* ===== CORE COMPETENCIES ===== */}
 
           {/* ===== TECH STACK ===== */}
           <section className="tech-section">

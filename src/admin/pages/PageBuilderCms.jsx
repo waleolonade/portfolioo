@@ -1,4 +1,4 @@
-import { useContext, useState, useRef, useEffect, useCallback } from 'react';
+import { useContext, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminContext } from '../AdminContext';
 import { PRESET_THEMES, COMPONENT_PALETTE } from '../constants';
@@ -9,7 +9,7 @@ import {
   Upload, X, Terminal, Play, RotateCcw, Code, Image as ImageIcon,
   Copy, Settings, Undo2, Redo2, Monitor, Tablet, Smartphone, History,
   Wand2, Search, FolderOpen, Layers, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  MapPin
+  MapPin, User
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════
@@ -247,6 +247,56 @@ export default function PageBuilderCms() {
     cmsForm, setCmsForm
   } = useContext(AdminContext);
 
+  const aboutPage = useMemo(() => {
+    if (cmsForm && cmsForm.about_page_content) {
+      try {
+        return typeof cmsForm.about_page_content === 'string'
+          ? JSON.parse(cmsForm.about_page_content)
+          : cmsForm.about_page_content;
+      } catch (e) {
+        console.error('Failed to parse about_page_content:', e);
+      }
+    }
+    return {
+      title: 'Olawale Olonade',
+      role: 'Staff Software Engineer',
+      bio: "I architect and build high‑scale systems that handle millions of requests per day. Passionate about clean abstractions, team mentorship, and turning business requirements into reliable, maintainable software.",
+      hero_bio: "I have spent years building custom Web Applications, APIs, and responsive Frontend layers. From full scale web systems to local business sites, I design components with absolute precision.",
+      bio_extended: "10+ years · Distributed Systems · API Design · Tech Leadership",
+      experience_years: '10+',
+      projects_built: '8',
+      happy_clients: '12',
+      git_commits: '3',
+      skills: [
+        { category: 'Frontend Architecture', items: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Framer Motion', 'Redux Toolkit'] },
+        { category: 'Backend Systems', items: ['Node.js', 'Express', 'PHP', 'Laravel', 'Python', 'RESTful APIs'] },
+        { category: 'Database & Caching', items: ['MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Firebase'] },
+        { category: 'Cloud & Infrastructure', items: ['Git/GitHub', 'Docker', 'AWS (S3, EC2)', 'Vercel', 'Linux', 'Nginx'] }
+      ],
+      experience: [
+        { role: 'Senior Full Stack Engineer', company: 'Brainfeels Tech', date: '2021 - Present', desc: 'Leading engineering squads to develop high-throughput enterprise systems, payment integrations, and beautiful cloud-native web portals.', tech: ['React', 'Node.js', 'AWS', 'MySQL', 'WebSockets'] },
+        { role: 'Frontend Architect', company: 'Digital Solutions Inc.', date: '2018 - 2021', desc: 'Led transition to micro-frontends. Reduced bundle sizes by 45% and improved SEO and client retention by designing fluid web dashboards.', tech: ['Vue.js', 'TypeScript', 'Tailwind CSS', 'Sass'] },
+        { role: 'Web Developer', company: 'Creative Agency', date: '2015 - 2018', desc: 'Customized web themes, built customized admin CRM panels, and built custom PHP frameworks for medium-scale businesses.', tech: ['PHP', 'WordPress', 'MySQL', 'jQuery'] }
+      ],
+      education: [
+        { degree: 'B.S. Computer Science', school: 'University of Technology', date: '2011 - 2015', desc: 'First Class honors. Focused heavily on Algorithms, System Architecture, Database Systems, and Object-Oriented Programming.' }
+      ],
+      certificates: [
+        { title: 'AWS Solutions Architect', issuer: 'Amazon Web Services', date: '2023' },
+        { title: 'Front-End Professional', issuer: 'Meta / Coursera', date: '2022' },
+        { title: 'Advanced React Patterns', issuer: 'Frontend Masters', date: '2021' },
+        { title: 'Cybersecurity Analyst', issuer: 'CompTIA', date: '2020' }
+      ]
+    };
+  }, [cmsForm]);
+
+  const updateAboutPage = (updatedObj) => {
+    setCmsForm(prev => ({
+      ...prev,
+      about_page_content: JSON.stringify(updatedObj)
+    }));
+  };
+
   const [activeTab, setActiveTab] = useState('layout');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
@@ -359,6 +409,7 @@ export default function PageBuilderCms() {
 
     const cmsPayload = {
       ...cmsForm,
+      about_page_content: JSON.stringify(aboutPage),
       homepage_layout: JSON.stringify(layout),
       cms_brand_assets: JSON.stringify(brandAssets),
       cms_header_builder: JSON.stringify(headerBuilder),
@@ -383,7 +434,7 @@ export default function PageBuilderCms() {
       console.error('Failed to postMessage to preview iframe:', e);
     }
   }, [
-    cmsForm, layout, brandAssets, headerBuilder, footerBuilder,
+    cmsForm, aboutPage, layout, brandAssets, headerBuilder, footerBuilder,
     socialManagement, whatsappHub, themeCustomizer, seoVisibility,
     customCode, footerLogo, templates, iframeLoaded
   ]);
@@ -489,6 +540,7 @@ export default function PageBuilderCms() {
   const tabs = [
     { id: 'layout', label: 'Homepage Builder', icon: <LayoutTemplate size={15} /> },
     { id: 'services_page', label: 'Services Page Builder', icon: <Layers size={15} /> },
+    { id: 'about_page', label: 'About Page Builder', icon: <User size={15} /> },
     { id: 'branding', label: 'Brand Identity', icon: <Sparkles size={15} /> },
     { id: 'header', label: 'Header Builder', icon: <Layout size={15} /> },
     { id: 'footer', label: 'Footer Builder', icon: <Layout size={15} /> },
@@ -1042,6 +1094,238 @@ export default function PageBuilderCms() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* ════════════ ABOUT PAGE BUILDER ════════════ */}
+                  {tab.id === 'about_page' && (
+                    <div className="fade-slide" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (iframeRef.current) {
+                            iframeRef.current.src = `${window.location.origin}${window.location.pathname}#/about`;
+                          }
+                        }} 
+                        className="btn btn-outline" 
+                        style={{ fontSize: '.75rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
+                      >
+                        <Eye size={14} /> Navigate Preview to About Page
+                      </button>
+                      
+
+                      {/* ──────── SECTION 1: HERO & STATS ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>01</span>
+                          Hero Section & Stats
+                        </h4>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.78rem' }}>Hero Biography</label>
+                          <textarea className="form-control" style={{ fontSize: '.8rem', padding: '8px 10px' }} rows={3} placeholder="Main hero paragraph shown at the top of the About page" value={aboutPage.hero_bio || ''} onChange={e => updateAboutPage({ ...aboutPage, hero_bio: e.target.value })} />
+                          <small style={{ color: 'var(--text-tertiary)', fontSize: '.68rem' }}>This text appears under "Architecting premium Digital Solutions"</small>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label style={{ fontSize: '.72rem' }}>Years Exp. Value</label>
+                            <input type="text" className="form-control" style={{ fontSize: '.8rem', padding: '6px 8px' }} placeholder="e.g. 10+" value={aboutPage.experience_years || ''} onChange={e => updateAboutPage({ ...aboutPage, experience_years: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label style={{ fontSize: '.72rem' }}>Products Value</label>
+                            <input type="text" className="form-control" style={{ fontSize: '.8rem', padding: '6px 8px' }} placeholder="e.g. 100+" value={aboutPage.projects_built || ''} onChange={e => updateAboutPage({ ...aboutPage, projects_built: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label style={{ fontSize: '.72rem' }}>Team Lead Value</label>
+                            <input type="text" className="form-control" style={{ fontSize: '.8rem', padding: '6px 8px' }} placeholder="e.g. 100%" value={aboutPage.happy_clients || ''} onChange={e => updateAboutPage({ ...aboutPage, happy_clients: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label style={{ fontSize: '.72rem' }}>Patents Value</label>
+                            <input type="text" className="form-control" style={{ fontSize: '.8rem', padding: '6px 8px' }} placeholder="e.g. 2.4k+" value={aboutPage.git_commits || ''} onChange={e => updateAboutPage({ ...aboutPage, git_commits: e.target.value })} />
+                          </div>
+                        </div>
+                      </div>
+
+
+                      {/* ──────── SECTION 2: COMPANY STORY / MISSION / VISION ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>02</span>
+                          Company Story, Mission & Vision
+                        </h4>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.78rem' }}>Company Story</label>
+                          <textarea className="form-control" style={{ fontSize: '.8rem', padding: '8px 10px' }} rows={4} placeholder="Tell your company's story..." value={cmsForm.company_story || ''} onChange={e => setCmsForm(prev => ({ ...prev, company_story: e.target.value }))} />
+                          <small style={{ color: 'var(--text-tertiary)', fontSize: '.68rem' }}>Shown in Step 01 — Company Story section</small>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label className="form-label" style={{ fontSize: '.78rem' }}>Our Mission</label>
+                            <textarea className="form-control" style={{ fontSize: '.78rem', padding: '8px 10px' }} rows={3} placeholder="Company mission statement" value={cmsForm.company_mission || ''} onChange={e => setCmsForm(prev => ({ ...prev, company_mission: e.target.value }))} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 8 }}>
+                            <label className="form-label" style={{ fontSize: '.78rem' }}>Our Vision</label>
+                            <textarea className="form-control" style={{ fontSize: '.78rem', padding: '8px 10px' }} rows={3} placeholder="Company vision statement" value={cmsForm.company_vision || ''} onChange={e => setCmsForm(prev => ({ ...prev, company_vision: e.target.value }))} />
+                          </div>
+                        </div>
+                      </div>
+
+
+                      {/* ──────── SECTION 3: WORK STANDARDS ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>03</span>
+                          Engineering Philosophy & Standards
+                        </h4>
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label" style={{ fontSize: '.78rem' }}>Section Description</label>
+                          <textarea className="form-control" style={{ fontSize: '.78rem', padding: '8px 10px' }} rows={2} placeholder="Description text for the standards section" value={aboutPage.standards_description || ''} onChange={e => updateAboutPage({ ...aboutPage, standards_description: e.target.value })} />
+                        </div>
+                        {(aboutPage.standards || [
+                          { title: 'Clean & Documented Git Commits', desc: 'Every commit is isolated, atomic, and thoroughly described to maintain absolute version tracing.' },
+                          { title: 'SEO & Accessibility Best Practices', desc: 'Crafting semantic, standards-compliant HTML structures for maximum browser reach and crawler accessibility.' },
+                          { title: 'Responsive Grid & Flex Layouts', desc: 'Pixel-perfect, fluid layouts optimized to look stunning on standard, tablet, and mobile dimensions.' },
+                          { title: 'Secure SQL Prepared Statements', desc: 'Strict input sanitization, parametrized queries, and password encryptions to block security vectors.' }
+                        ]).map((std, sIdx) => (
+                          <div key={sIdx} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                              <span style={{ fontSize: '.68rem', fontWeight: 800, color: 'var(--text-tertiary)', minWidth: 20 }}>0{sIdx + 1}</span>
+                              <input type="text" className="form-control" style={{ fontSize: '.78rem', padding: '4px 6px', flex: 1, fontWeight: 700 }} placeholder="Standard title" value={std.title} onChange={e => {
+                                const newStds = [...(aboutPage.standards || [])];
+                                if (!newStds[sIdx]) newStds[sIdx] = { ...std };
+                                newStds[sIdx].title = e.target.value;
+                                updateAboutPage({ ...aboutPage, standards: newStds });
+                              }} />
+                              <button type="button" className="btn btn-outline" style={{ padding: '2px 4px', color: '#ef4444' }} onClick={() => {
+                                const newStds = (aboutPage.standards || []).filter((_, i) => i !== sIdx);
+                                updateAboutPage({ ...aboutPage, standards: newStds });
+                              }}><Trash2 size={12} /></button>
+                            </div>
+                            <textarea className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px' }} rows={2} placeholder="Description" value={std.desc} onChange={e => {
+                              const newStds = [...(aboutPage.standards || [])];
+                              if (!newStds[sIdx]) newStds[sIdx] = { ...std };
+                              newStds[sIdx].desc = e.target.value;
+                              updateAboutPage({ ...aboutPage, standards: newStds });
+                            }} />
+                          </div>
+                        ))}
+                        <button type="button" className="btn btn-outline" style={{ fontSize: '.75rem', width: '100%', padding: '6px' }} onClick={() => {
+                          const newStds = [...(aboutPage.standards || []), { title: '', desc: '' }];
+                          updateAboutPage({ ...aboutPage, standards: newStds });
+                        }}>+ Add Standard</button>
+                      </div>
+
+
+                      {/* ──────── SECTION 4: CORE TECH STACK ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>04</span>
+                          Core Tech Stack
+                        </h4>
+                        {aboutPage.skills?.map((grp, gIdx) => (
+                          <div key={gIdx} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                              <input type="text" className="form-control" style={{ fontSize: '.78rem', padding: '4px 6px', width: '70%', fontWeight: 700 }} value={grp.category} onChange={e => {
+                                const newSkills = [...aboutPage.skills];
+                                newSkills[gIdx].category = e.target.value;
+                                updateAboutPage({ ...aboutPage, skills: newSkills });
+                              }} />
+                              <button type="button" className="btn btn-outline" style={{ padding: '2px 6px', color: '#ef4444', fontSize: '.7rem' }} onClick={() => {
+                                const newSkills = aboutPage.skills.filter((_, i) => i !== gIdx);
+                                updateAboutPage({ ...aboutPage, skills: newSkills });
+                              }}>Delete</button>
+                            </div>
+                            <input type="text" className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px' }} placeholder="Comma-separated items (e.g. React, Vue)" value={grp.items.join(', ')} onChange={e => {
+                              const newSkills = [...aboutPage.skills];
+                              newSkills[gIdx].items = e.target.value.split(',').map(x => x.trim()).filter(Boolean);
+                              updateAboutPage({ ...aboutPage, skills: newSkills });
+                            }} />
+                          </div>
+                        ))}
+                        <button type="button" className="btn btn-outline" style={{ fontSize: '.75rem', width: '100%', padding: '6px' }} onClick={() => {
+                          const newSkills = [...(aboutPage.skills || []), { category: 'New Category', items: [] }];
+                          updateAboutPage({ ...aboutPage, skills: newSkills });
+                        }}>+ Add Skill Category</button>
+                      </div>
+
+
+                      {/* ──────── SECTION 5: TEAM MEMBERS ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>05</span>
+                          Team Members
+                        </h4>
+                        {(aboutPage.featured_projects || []).map((member, mIdx) => (
+                          <div key={mIdx} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center' }}>
+                              <input type="text" className="form-control" style={{ fontSize: '.78rem', padding: '4px 6px', flex: 1, fontWeight: 700 }} placeholder="Team member name" value={member.name || ''} onChange={e => {
+                                const newTeam = [...(aboutPage.featured_projects || [])];
+                                newTeam[mIdx] = { ...newTeam[mIdx], name: e.target.value };
+                                updateAboutPage({ ...aboutPage, featured_projects: newTeam });
+                              }} />
+                              <button type="button" className="btn btn-outline" style={{ padding: '2px 4px', color: '#ef4444' }} onClick={() => {
+                                const newTeam = (aboutPage.featured_projects || []).filter((_, i) => i !== mIdx);
+                                updateAboutPage({ ...aboutPage, featured_projects: newTeam });
+                              }}><Trash2 size={12} /></button>
+                            </div>
+                            <textarea className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px' }} rows={2} placeholder="Short description of this team member's expertise" value={member.description || ''} onChange={e => {
+                              const newTeam = [...(aboutPage.featured_projects || [])];
+                              newTeam[mIdx] = { ...newTeam[mIdx], description: e.target.value };
+                              updateAboutPage({ ...aboutPage, featured_projects: newTeam });
+                            }} />
+                          </div>
+                        ))}
+                        <button type="button" className="btn btn-outline" style={{ fontSize: '.75rem', width: '100%', padding: '6px' }} onClick={() => {
+                          const newTeam = [...(aboutPage.featured_projects || []), { name: '', description: '' }];
+                          updateAboutPage({ ...aboutPage, featured_projects: newTeam });
+                        }}>+ Add Team Member</button>
+                      </div>
+
+
+                      {/* ──────── SECTION 6: MILESTONES / EXPERIENCE ──────── */}
+                      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 4 }}>
+                        <h4 style={{ fontSize: '.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: '.65rem', fontWeight: 800 }}>06</span>
+                          Track Record & Milestones
+                        </h4>
+                        {aboutPage.experience?.map((exp, eIdx) => (
+                          <div key={eIdx} style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
+                              <input type="text" className="form-control" style={{ fontSize: '.78rem', padding: '4px 6px', width: '45%' }} placeholder="Role" value={exp.role} onChange={e => {
+                                const newExp = [...aboutPage.experience]; newExp[eIdx].role = e.target.value;
+                                updateAboutPage({ ...aboutPage, experience: newExp });
+                              }} />
+                              <input type="text" className="form-control" style={{ fontSize: '.78rem', padding: '4px 6px', width: '45%' }} placeholder="Company" value={exp.company} onChange={e => {
+                                const newExp = [...aboutPage.experience]; newExp[eIdx].company = e.target.value;
+                                updateAboutPage({ ...aboutPage, experience: newExp });
+                              }} />
+                              <button type="button" className="btn btn-outline" style={{ padding: '2px 4px', color: '#ef4444' }} onClick={() => {
+                                const newExp = aboutPage.experience.filter((_, i) => i !== eIdx);
+                                updateAboutPage({ ...aboutPage, experience: newExp });
+                              }}><Trash2 size={12} /></button>
+                            </div>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <input type="text" className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px', width: '40%' }} placeholder="Date (e.g. 2021 - Present)" value={exp.date} onChange={e => {
+                                const newExp = [...aboutPage.experience]; newExp[eIdx].date = e.target.value;
+                                updateAboutPage({ ...aboutPage, experience: newExp });
+                              }} />
+                              <input type="text" className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px', width: '60%' }} placeholder="Tech (comma-separated)" value={exp.tech?.join(', ') || ''} onChange={e => {
+                                const newExp = [...aboutPage.experience]; newExp[eIdx].tech = e.target.value.split(',').map(x => x.trim()).filter(Boolean);
+                                updateAboutPage({ ...aboutPage, experience: newExp });
+                              }} />
+                            </div>
+                            <textarea className="form-control" style={{ fontSize: '.75rem', padding: '4px 6px' }} rows={2} placeholder="Description of work done at this role" value={exp.desc} onChange={e => {
+                              const newExp = [...aboutPage.experience]; newExp[eIdx].desc = e.target.value;
+                              updateAboutPage({ ...aboutPage, experience: newExp });
+                            }} />
+                          </div>
+                        ))}
+                        <button type="button" className="btn btn-outline" style={{ fontSize: '.75rem', width: '100%', padding: '6px' }} onClick={() => {
+                          const newExp = [...(aboutPage.experience || []), { role: '', company: '', date: '', desc: '', tech: [] }];
+                          updateAboutPage({ ...aboutPage, experience: newExp });
+                        }}>+ Add Milestone</button>
+                      </div>
+
                     </div>
                   )}
 

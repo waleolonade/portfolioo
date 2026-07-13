@@ -42,6 +42,22 @@ try {
     $res = $paymentService->verify($reference, $gatewayName, $inputData);
     
     if ($res['success']) {
+        // Query details to trigger client notification
+        $txStmt = $pdo->prepare("SELECT `client_id`, `invoice_id`, `amount` FROM `payment_transactions` WHERE `reference` = ? LIMIT 1");
+        $txStmt->execute([$reference]);
+        $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($txRow) {
+            $txClientId = intval($txRow['client_id']);
+            $txInvId = intval($txRow['invoice_id']);
+            
+            $invStmt = $pdo->prepare("SELECT `invoice_code` FROM `client_invoices` WHERE `id` = ? LIMIT 1");
+            $invStmt->execute([$txInvId]);
+            $invCode = $invStmt->fetchColumn() ?: "Invoice";
+            
+            create_notification($txClientId, "Payment Received", "Your payment of " . number_format($txRow['amount'], 2) . " for invoice {$invCode} via " . ucfirst($gatewayName) . " was received.", $pdo);
+        }
+
         echo json_encode([
             "success" => true,
             "message" => "Payment verified and invoice fulfilled successfully.",

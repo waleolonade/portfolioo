@@ -133,6 +133,9 @@ try {
                 // Save bot's reply
                 $botStmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, 'Brainfeels AI Copilot', 1)");
                 $botStmt->execute([$adminId, $currentUserId, $replyText]);
+
+                // Trigger notification
+                create_notification($currentUserId, "AI Copilot Response", "Brainfeels AI Copilot replied to your message.", $pdo);
             }
 
             echo json_encode(["success" => true, "message" => "Message sent."]);
@@ -147,6 +150,10 @@ try {
 
             $stmt = $pdo->prepare("INSERT INTO `chat_messages` (`sender_id`, `receiver_id`, `message`, `sender_name`, `is_bot`) VALUES (?, ?, ?, ?, 0)");
             $stmt->execute([$currentUserId, $receiverId, $messageText, $username]);
+
+            // Trigger notification
+            $snippet = strlen($messageText) > 60 ? substr($messageText, 0, 60) . '...' : $messageText;
+            create_notification($receiverId, "New Message from Admin", "{$username} sent you a message: \"{$snippet}\"", $pdo);
             
             echo json_encode(["success" => true, "message" => "Admin reply sent successfully."]);
             exit();

@@ -162,6 +162,9 @@ try {
             $stmt = $pdo->prepare("INSERT INTO `client_invoices` (`client_id`, `invoice_code`, `amount`, `balance_due`, `currency`, `status`, `due_date`) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$clientId, $code, $amount, $balance, $currency, $status, $dueDate]);
             
+            // Dynamic client notification
+            create_notification($clientId, "Invoice Generated", "Invoice {$code} for {$currency}{$amount} is ready for payment.", $pdo);
+            
             echo json_encode(["success" => true, "message" => "Invoice generated successfully.", "code" => $code]);
             exit();
         }
@@ -183,8 +186,17 @@ try {
                 exit();
             }
 
+            // Query invoice to get client_id
+            $cliStmt = $pdo->prepare("SELECT `client_id` FROM `client_invoices` WHERE `id` = ? LIMIT 1");
+            $cliStmt->execute([$invId]);
+            $invClientId = intval($cliStmt->fetchColumn());
+
             $stmt = $pdo->prepare("UPDATE `client_invoices` SET `invoice_code` = ?, `amount` = ?, `balance_due` = ?, `currency` = ?, `status` = ?, `due_date` = ? WHERE `id` = ?");
             $stmt->execute([$code, $amount, $balance, $currency, $status, $dueDate, $invId]);
+            
+            if ($invClientId > 0) {
+                create_notification($invClientId, "Invoice Details Updated", "Invoice {$code} details or status was updated to: {$status}.", $pdo);
+            }
             
             echo json_encode(["success" => true, "message" => "Invoice updated successfully."]);
             exit();
@@ -201,8 +213,17 @@ try {
                 exit();
             }
 
+            // Query invoice to get details before deletion
+            $cliStmt = $pdo->prepare("SELECT `client_id`, `invoice_code` FROM `client_invoices` WHERE `id` = ? LIMIT 1");
+            $cliStmt->execute([$invId]);
+            $invRow = $cliStmt->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $pdo->prepare("DELETE FROM `client_invoices` WHERE `id` = ?");
             $stmt->execute([$invId]);
+            
+            if ($invRow) {
+                create_notification(intval($invRow['client_id']), "Invoice Removed", "Invoice {$invRow['invoice_code']} has been cancelled and removed.", $pdo);
+            }
             
             echo json_encode(["success" => true, "message" => "Invoice record removed."]);
             exit();
@@ -239,6 +260,8 @@ try {
             // Delete record
             $delStmt = $pdo->prepare("DELETE FROM `client_files` WHERE `id` = ?");
             $delStmt->execute([$fileId]);
+            
+            create_notification(intval($file['client_id']), "Document Removed", "File '{$file['filename']}' was removed from your workspace by the Admin.", $pdo);
 
             // Add system logger notification
             $systemMsg = "🔧 System Alert: Document '" . $file['filename'] . "' has been deleted by the Admin.";
@@ -271,6 +294,8 @@ try {
 
             $insStmt = $pdo->prepare("INSERT INTO `client_tasks` (`client_id`, `title`, `description`, `status`, `action_type`, `due_date`) VALUES (?, ?, ?, 'Pending', 'upload', 'ASAP')");
             $insStmt->execute([$clientId, $taskTitle, $taskDesc]);
+            
+            create_notification($clientId, "Document Requested", "A new checklist task was added: Please upload '{$category}' document.", $pdo);
 
             // Add system log message
             $systemMsg = "🔧 System Alert: Admin has requested a new document upload (" . $category . "). Reason: " . $reason;
@@ -317,8 +342,17 @@ try {
                 exit();
             }
 
+            // Query task details before updating
+            $taskDetailsStmt = $pdo->prepare("SELECT `client_id`, `title` FROM `client_tasks` WHERE `id` = ? LIMIT 1");
+            $taskDetailsStmt->execute([$taskId]);
+            $taskDetails = $taskDetailsStmt->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $pdo->prepare("UPDATE `client_tasks` SET `due_date` = ? WHERE `id` = ?");
             $stmt->execute([$dueDate, $taskId]);
+
+            if ($taskDetails) {
+                create_notification(intval($taskDetails['client_id']), "Task Deadline Changed", "The due date for task '{$taskDetails['title']}' was updated to: {$dueDate}.", $pdo);
+            }
 
             echo json_encode(["success" => true, "message" => "Task due date updated successfully."]);
             exit();
@@ -339,6 +373,8 @@ try {
             // Update database
             $stmt = $pdo->prepare("UPDATE `client_projects` SET `target_date` = ? WHERE `client_id` = ?");
             $stmt->execute([$targetDate, $clientId]);
+            
+            create_notification($clientId, "Project Launch Adjusted", "Project target launch date has been updated to: {$targetDate}.", $pdo);
 
             // Add system log message
             $systemMsg = "🔧 System Alert: Project target release date has been updated to '" . $targetDate . "' by the Admin.";
@@ -398,6 +434,8 @@ try {
 
             $updateProjStmt = $pdo->prepare("UPDATE `client_projects` SET `progress` = ?, `status` = ? WHERE `client_id` = ?");
             $updateProjStmt->execute([$progressPercent, $projStatus, $clientOwnerId]);
+            
+            create_notification($clientOwnerId, "Payment Status Updated", "Invoice {$invoice['invoice_code']} status was changed to: {$newInvStatus}.", $pdo);
 
             $systemMsg = "🔧 System Alert: Invoice '" . $invoice['invoice_code'] . "' status has been marked as " . $newInvStatus . " by the Admin. Project progress updated to " . $progressPercent . "% (" . $projStatus . ").";
             
@@ -521,6 +559,8 @@ try {
         // Update project status in db
         $updateProjStmt = $pdo->prepare("UPDATE `client_projects` SET `progress` = ?, `status` = ? WHERE `client_id` = ?");
         $updateProjStmt->execute([$progressPercent, $projStatus, $clientOwnerId]);
+        
+        create_notification($clientOwnerId, "Task Status Updated", "Task '{$task['title']}' has been marked as {$newStatus}.", $pdo);
 
         // Get system message logger
         $systemMsg = "🔧 System Alert: Task '" . $task['title'] . "' has been marked as " . $newStatus . ". Project progress updated to " . $progressPercent . "% (" . $projStatus . ").";

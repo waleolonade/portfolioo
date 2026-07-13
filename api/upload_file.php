@@ -85,6 +85,10 @@ try {
     $insertStmt->execute([$clientId, $fileName, $fileUrl, $fileSizeStr, $category]);
     $newFileId = $pdo->lastInsertId();
 
+    // Trigger notification
+    $uploader = $currentUserRole === 'Client' ? 'You' : 'Admin';
+    create_notification($clientId, "Document Uploaded", "{$uploader} uploaded file '{$fileName}' under category '{$category}'.", $pdo);
+
     // System message logs
     $senderName = $currentUserRole === 'Client' ? 'Client' : 'Admin';
     $systemMsg = "🔧 System Alert: File '" . $fileName . "' (" . $fileSizeStr . ") has been uploaded by the " . $senderName . ".";
